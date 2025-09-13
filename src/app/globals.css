@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 90%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 0%;
+    --radius: 0px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold uppercase tracking-tight;
+  }
+}
+
+@layer components {
+  .brutal-border {
+    @apply border-2 border-black;
+  }
+  
+  .brutal-border-thick {
+    @apply border-4 border-black;
+  }
+  
+  .brutal-shadow {
+    @apply shadow-brutal;
+  }
+  
+  .brutal-shadow-hover {
+    @apply hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-sm transition-all;
+  }
+  
+  .brutal-button {
+    @apply px-6 py-3 font-bold uppercase tracking-wide border-2 border-black bg-white text-black hover:bg-black hover:text-white transition-colors;
+  }
+  
+  .brutal-button-primary {
+    @apply px-6 py-3 font-bold uppercase tracking-wide border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors;
+  }
+  
+  .brutal-input {
+    @apply w-full px-4 py-3 font-mono border-2 border-black focus:outline-none focus:border-4 transition-all;
+  }
+  
+  .brutal-card {
+    @apply bg-white border-2 border-black p-6;
+  }
+}
