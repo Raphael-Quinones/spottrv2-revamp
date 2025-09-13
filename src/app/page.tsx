@@ -2,29 +2,35 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Zap, Shield, Video } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-bg">
+      {/* Quick Theme Toggle in corner */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Hero Section */}
-      <section className="border-b-4 border-black">
+      <section className="border-b-4 border-border">
         <div className="container mx-auto px-4 py-24">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-6xl font-bold uppercase tracking-tighter mb-6">
               Find Anything<br />
-              <span className="bg-black text-white px-4">In Your Videos</span>
+              <span className="bg-fg text-bg px-4">In Your Videos</span>
             </h1>
-            <p className="text-xl font-mono mb-8 text-gray-700">
+            <p className="text-xl font-mono mb-8 text-muted-fg">
               AI-powered video analysis that spots what matters
             </p>
             <div className="flex gap-4 justify-center">
               <Link href="/signup">
-                <Button size="lg" className="shadow-brutal">
+                <Button size="lg" className="brutal-shadow">
                   Get Started
                 </Button>
               </Link>
               <Link href="/login">
-                <Button size="lg" variant="secondary" className="shadow-brutal">
+                <Button size="lg" variant="secondary" className="brutal-shadow">
                   Sign In
                 </Button>
               </Link>
@@ -40,9 +46,9 @@ export default function LandingPage() {
             How It Works
           </h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="shadow-brutal">
+            <Card className="brutal-shadow">
               <CardContent className="p-8">
-                <div className="border-2 border-black p-4 inline-block mb-4">
+                <div className="border-2 border-border p-4 inline-block mb-4">
                   <Video className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold uppercase mb-2">Upload</h3>
@@ -52,9 +58,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-brutal">
+            <Card className="brutal-shadow">
               <CardContent className="p-8">
-                <div className="border-2 border-black p-4 inline-block mb-4">
+                <div className="border-2 border-border p-4 inline-block mb-4">
                   <Zap className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold uppercase mb-2">Process</h3>
@@ -64,9 +70,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-brutal">
+            <Card className="brutal-shadow">
               <CardContent className="p-8">
-                <div className="border-2 border-black p-4 inline-block mb-4">
+                <div className="border-2 border-border p-4 inline-block mb-4">
                   <Search className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold uppercase mb-2">Search</h3>
@@ -80,13 +86,13 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-24 border-t-4 border-black">
+      <section className="py-24 border-t-4 border-border">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold uppercase text-center mb-16">
             Simple Pricing
           </h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="border-2 border-black">
+            <Card className="border-2 border-border">
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold uppercase mb-2">Free</h3>
                 <p className="text-4xl font-bold mb-4">$0</p>
@@ -102,7 +108,7 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-4 border-black shadow-brutal-lg">
+            <Card className="border-4 border-border brutal-shadow-lg">
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold uppercase mb-2">Pro</h3>
                 <p className="text-4xl font-bold mb-4">$29</p>
@@ -112,13 +118,13 @@ export default function LandingPage() {
                   <li>• All AI models</li>
                   <li>• Priority support</li>
                 </ul>
-                <Button className="w-full shadow-brutal">
+                <Button className="w-full brutal-shadow">
                   Get Pro
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-black">
+            <Card className="border-2 border-border">
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold uppercase mb-2">Enterprise</h3>
                 <p className="text-4xl font-bold mb-4">Custom</p>
@@ -138,9 +144,9 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t-4 border-black py-8">
+      <footer className="border-t-4 border-border py-8">
         <div className="container mx-auto px-4 text-center">
-          <p className="font-mono text-sm uppercase text-gray-600">
+          <p className="font-mono text-sm uppercase text-muted-fg">
             © 2024 Spottr. AI-Powered Video Analysis.
           </p>
         </div>

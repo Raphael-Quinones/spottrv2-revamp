@@ -1,298 +1,190 @@
-'use client';
-
-import { useState } from 'react';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { 
   Play, 
   Pause, 
   SkipBack, 
-  SkipForward,
-  Volume2,
-  Maximize,
-  Search,
+  SkipForward, 
   Download,
-  ChevronLeft,
+  Search,
   Clock,
-  FileText,
-  Zap
+  FileVideo
 } from 'lucide-react';
 
 export default function VideoDetailPage({ params }: { params: { id: string } }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Mock data
+  // Mock video data - no actual video playback
   const video = {
     id: params.id,
     name: 'traffic_cam_001.mp4',
     status: 'completed',
-    accuracyLevel: 'nano',
     duration: '2:34',
-    durationSeconds: 154,
-    fileSize: '45.2 MB',
-    processedAt: '2024-01-15 14:30',
-    searchPrompt: 'Find all license plates',
+    size: '125 MB',
+    uploadDate: '2024-01-15',
+    processDate: '2024-01-15',
+    prompt: 'Find all license plates in the video',
+    accuracy: 'GPT-5 Mini',
     frameInterval: 0.5,
-    tokensUsed: 12500,
-    url: '/api/placeholder/video',
+    totalFrames: 308,
+    tokensUsed: 125000,
   };
 
-  const analysisHighlights = [
-    { timestamp: 12, duration: 5, label: 'License plate: ABC-123', confidence: 0.95 },
-    { timestamp: 45, duration: 3, label: 'License plate: XYZ-789', confidence: 0.88 },
-    { timestamp: 78, duration: 4, label: 'License plate: DEF-456', confidence: 0.92 },
-    { timestamp: 120, duration: 6, label: 'Multiple plates detected', confidence: 0.76 },
+  const matches = [
+    { timestamp: '00:15', confidence: 95, content: 'License plate: ABC-123' },
+    { timestamp: '00:45', confidence: 92, content: 'License plate: XYZ-789' },
+    { timestamp: '01:23', confidence: 88, content: 'License plate: DEF-456' },
+    { timestamp: '02:10', confidence: 90, content: 'License plate: GHI-012' },
   ];
-
-  const searchResults = [
-    { timestamp: 12, text: 'White sedan with license plate ABC-123 entering frame' },
-    { timestamp: 45, text: 'Blue truck with license plate XYZ-789 passing by' },
-    { timestamp: 78, text: 'Red car with license plate DEF-456 stopped at light' },
-    { timestamp: 120, text: 'Multiple vehicles visible, 3 license plates detected' },
-  ];
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleSeek = (timestamp: number) => {
-    setCurrentTime(timestamp);
-    // In real implementation, would seek video to this timestamp
-  };
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <Link href="/videos">
-          <Button variant="ghost" className="mb-4">
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to Videos
-          </Button>
-        </Link>
-        <div className="flex items-start justify-between">
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold uppercase mb-2">{video.name}</h1>
-            <p className="font-mono text-sm text-gray-600">
-              Processed on {video.processedAt}
+            <p className="font-mono text-sm text-muted-fg">
+              Uploaded on {video.uploadDate}
             </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant="success">Completed</Badge>
-            <Badge variant="outline">{video.accuracyLevel}</Badge>
-          </div>
+          <Badge variant="success" className="text-lg px-4 py-2">
+            Completed
+          </Badge>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Video Player Section */}
-        <div className="lg:col-span-2">
-          <Card className="mb-6">
-            <CardContent className="p-0">
-              {/* Video Player */}
-              <div className="relative bg-black aspect-video">
-                <video 
-                  className="w-full h-full"
-                  src={video.url}
-                  poster="/api/placeholder/800/450"
-                />
-                
-                {/* Overlay Controls */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="w-16 h-16 border-4"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                  >
-                    {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+      {/* Video Player Mockup */}
+      <Card className="mb-8">
+        <CardContent className="p-0">
+          <div className="relative bg-fg aspect-video flex items-center justify-center">
+            <FileVideo className="w-24 h-24 text-bg opacity-50" />
+            <div className="absolute bottom-0 left-0 right-0 bg-bg/90 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="ghost">
+                    <Play className="w-4 h-4" />
                   </Button>
-                </div>
-              </div>
-
-              {/* Timeline with Highlights */}
-              <div className="p-4 border-t-2 border-black">
-                <div className="relative h-2 bg-gray-200 border border-black mb-2">
-                  {/* Progress */}
-                  <div 
-                    className="absolute h-full bg-black" 
-                    style={{ width: `${(currentTime / video.durationSeconds) * 100}%` }}
-                  />
-                  
-                  {/* Highlights */}
-                  {analysisHighlights.map((highlight, idx) => (
-                    <div
-                      key={idx}
-                      className="absolute h-full bg-yellow-400 cursor-pointer hover:bg-yellow-500"
-                      style={{
-                        left: `${(highlight.timestamp / video.durationSeconds) * 100}%`,
-                        width: `${(highlight.duration / video.durationSeconds) * 100}%`,
-                      }}
-                      onClick={() => handleSeek(highlight.timestamp)}
-                      title={highlight.label}
-                    />
-                  ))}
-                </div>
-                
-                <div className="flex justify-between font-mono text-xs">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{video.duration}</span>
-                </div>
-              </div>
-
-              {/* Player Controls */}
-              <div className="p-4 border-t-2 border-black flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Button size="icon" variant="outline">
+                  <Button size="sm" variant="ghost">
+                    <Pause className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost">
                     <SkipBack className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    size="icon" 
-                    variant="default"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                  >
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </Button>
-                  <Button size="icon" variant="outline">
+                  <Button size="sm" variant="ghost">
                     <SkipForward className="w-4 h-4" />
                   </Button>
-                  <Button size="icon" variant="ghost">
-                    <Volume2 className="w-4 h-4" />
-                  </Button>
                 </div>
-                <Button size="icon" variant="ghost">
-                  <Maximize className="w-4 h-4" />
-                </Button>
+                <span className="font-mono text-xs">00:00 / {video.duration}</span>
+              </div>
+              <div className="h-2 bg-muted border border-border">
+                <div className="h-full bg-fg" style={{ width: '0%' }} />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Video Details */}
+        <div className="md:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Processing Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Search Prompt:</span>
+                <span>"{video.prompt}"</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">AI Model:</span>
+                <span>{video.accuracy}</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Frame Interval:</span>
+                <span>{video.frameInterval}s</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Total Frames:</span>
+                <span>{video.totalFrames}</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Tokens Used:</span>
+                <span>{video.tokensUsed.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Process Date:</span>
+                <span>{video.processDate}</span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Search in Video */}
           <Card>
             <CardHeader>
-              <CardTitle>Search in Video</CardTitle>
+              <CardTitle>Matches Found ({matches.length})</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex space-x-2 mb-4">
-                <Input
-                  placeholder="Search for specific moments..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <Button>
-                  <Search className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {searchResults.map((result, idx) => (
-                  <button
-                    key={idx}
-                    className="w-full text-left p-3 border-2 border-black hover:bg-black hover:text-white transition-colors"
-                    onClick={() => handleSeek(result.timestamp)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <p className="font-mono text-sm flex-1">{result.text}</p>
-                      <Badge variant="outline" className="ml-2">
-                        {formatTime(result.timestamp)}
-                      </Badge>
+            <CardContent className="space-y-3">
+              {matches.map((match, index) => (
+                <div key={index} className="border-2 border-border p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span className="font-mono text-sm">{match.timestamp}</span>
                     </div>
-                  </button>
-                ))}
-              </div>
+                    <Badge variant={match.confidence > 90 ? 'success' : 'warning'}>
+                      {match.confidence}% confidence
+                    </Badge>
+                  </div>
+                  <p className="font-mono text-sm">{match.content}</p>
+                  <Button size="sm" variant="outline" className="mt-2">
+                    Jump to Timestamp
+                  </Button>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar Actions */}
         <div className="space-y-6">
-          {/* Video Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Video Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="font-mono text-xs uppercase text-gray-600 mb-1">Original Prompt</p>
-                <p className="text-sm">{video.searchPrompt}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="font-mono text-xs uppercase text-gray-600 mb-1">Duration</p>
-                  <p className="font-bold">{video.duration}</p>
-                </div>
-                <div>
-                  <p className="font-mono text-xs uppercase text-gray-600 mb-1">File Size</p>
-                  <p className="font-bold">{video.fileSize}</p>
-                </div>
-                <div>
-                  <p className="font-mono text-xs uppercase text-gray-600 mb-1">Frame Interval</p>
-                  <p className="font-bold">{video.frameInterval}s</p>
-                </div>
-                <div>
-                  <p className="font-mono text-xs uppercase text-gray-600 mb-1">Tokens Used</p>
-                  <p className="font-bold">{video.tokensUsed.toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Analysis Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Analysis Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border-2 border-black">
-                  <div className="flex items-center">
-                    <FileText className="w-5 h-5 mr-3" />
-                    <span className="font-mono text-sm">Detections</span>
-                  </div>
-                  <span className="font-bold">{analysisHighlights.length}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 border-2 border-black">
-                  <div className="flex items-center">
-                    <Clock className="w-5 h-5 mr-3" />
-                    <span className="font-mono text-sm">Process Time</span>
-                  </div>
-                  <span className="font-bold">2m 15s</span>
-                </div>
-                <div className="flex items-center justify-between p-3 border-2 border-black">
-                  <div className="flex items-center">
-                    <Zap className="w-5 h-5 mr-3" />
-                    <span className="font-mono text-sm">Accuracy</span>
-                  </div>
-                  <Badge>{video.accuracyLevel}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
           <Card>
             <CardHeader>
               <CardTitle>Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <Button className="w-full" variant="outline">
+            <CardContent className="space-y-3">
+              <Button className="w-full" variant="default">
                 <Download className="w-4 h-4 mr-2" />
-                Download Analysis
+                Export Results
+              </Button>
+              <Button className="w-full" variant="secondary">
+                <Search className="w-4 h-4 mr-2" />
+                New Search
               </Button>
               <Button className="w-full" variant="outline">
-                <FileText className="w-4 h-4 mr-2" />
-                Export Report
+                Reprocess Video
               </Button>
               <Button className="w-full" variant="outline">
-                Re-process Video
+                Delete Video
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>File Info</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="font-mono text-xs">
+                <span className="text-muted-fg">Size:</span> {video.size}
+              </div>
+              <div className="font-mono text-xs">
+                <span className="text-muted-fg">Duration:</span> {video.duration}
+              </div>
+              <div className="font-mono text-xs">
+                <span className="text-muted-fg">Format:</span> MP4
+              </div>
+              <div className="font-mono text-xs">
+                <span className="text-muted-fg">Resolution:</span> 1920x1080
+              </div>
             </CardContent>
           </Card>
         </div>

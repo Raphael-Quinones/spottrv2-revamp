@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Space_Mono } from 'next/font/google';
 import './globals.css';
-import { AutumnProvider } from '@/lib/autumn/provider';
+import { ThemeProvider } from '@/providers/theme-provider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,11 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceMono.variable}`}>
-      <body className="min-h-screen bg-white text-black font-sans antialiased">
-        <AutumnProvider>
+    <html lang="en" className={`${inter.variable} ${spaceMono.variable}`} suppressHydrationWarning>
+      <body className="min-h-screen bg-bg text-fg font-sans antialiased">
+        <ThemeProvider>
           {children}
-        </AutumnProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

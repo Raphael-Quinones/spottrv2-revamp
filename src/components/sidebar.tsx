@@ -9,10 +9,9 @@ import {
   Search, 
   Settings, 
   CreditCard,
-  BarChart3,
-  Clock
+  Clock,
+  BarChart3
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 const sidebarItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -27,7 +26,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 min-h-screen border-r-4 border-black bg-white">
+    <aside className="w-64 min-h-screen border-r-4 border-border bg-bg">
       <div className="p-6">
         <div className="mb-8">
           <h2 className="font-bold uppercase text-sm mb-4">Navigation</h2>
@@ -40,12 +39,11 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    "flex items-center space-x-3 px-4 py-3 font-mono text-sm uppercase transition-colors",
+                  className={`flex items-center space-x-3 px-4 py-3 font-mono text-sm uppercase transition-colors ${
                     isActive 
-                      ? "bg-black text-white" 
-                      : "hover:bg-black hover:text-white"
-                  )}
+                      ? 'bg-fg text-bg' 
+                      : 'hover:bg-fg hover:text-bg'
+                  }`}
                 >
                   <Icon className="w-5 h-5" />
                   <span>{item.label}</span>
@@ -55,29 +53,29 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Processing Queue */}
-        <div className="border-t-2 border-black pt-6">
+        {/* Processing Queue - Mock Data */}
+        <div className="border-t-2 border-border pt-6">
           <h2 className="font-bold uppercase text-sm mb-4 flex items-center">
             <Clock className="w-4 h-4 mr-2" />
             Processing Queue
           </h2>
           <div className="space-y-2">
-            <div className="border-2 border-black p-3">
+            <div className="border-2 border-border p-3">
               <p className="font-mono text-xs uppercase">Video_001.mp4</p>
-              <div className="mt-2 h-2 bg-gray-200 border border-black">
-                <div className="h-full bg-black" style={{ width: '45%' }} />
+              <div className="mt-2 h-2 bg-muted border border-border">
+                <div className="h-full bg-fg" style={{ width: '45%' }} />
               </div>
               <p className="font-mono text-xs mt-1">45% Complete</p>
             </div>
-            <div className="border-2 border-black p-3">
+            <div className="border-2 border-border p-3">
               <p className="font-mono text-xs uppercase">Video_002.mp4</p>
-              <p className="font-mono text-xs mt-1 text-gray-600">Queued</p>
+              <p className="font-mono text-xs mt-1 text-muted-fg">Queued</p>
             </div>
           </div>
         </div>
 
-        {/* Usage Stats */}
-        <div className="border-t-2 border-black pt-6 mt-6">
+        {/* Usage Stats - Mock Data */}
+        <div className="border-t-2 border-border pt-6 mt-6">
           <h2 className="font-bold uppercase text-sm mb-4 flex items-center">
             <BarChart3 className="w-4 h-4 mr-2" />
             Usage
@@ -86,8 +84,8 @@ export function Sidebar() {
             <div>
               <p className="font-mono text-xs uppercase">Minutes Used</p>
               <p className="font-bold text-lg">7.5 / 10</p>
-              <div className="mt-1 h-2 bg-gray-200 border border-black">
-                <div className="h-full bg-black" style={{ width: '75%' }} />
+              <div className="mt-1 h-2 bg-muted border border-border">
+                <div className="h-full bg-fg" style={{ width: '75%' }} />
               </div>
             </div>
           </div>

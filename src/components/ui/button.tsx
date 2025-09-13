@@ -1,56 +1,36 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import * as React from "react";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default: "border-2 border-black bg-black text-white hover:bg-white hover:text-black",
-        secondary: "border-2 border-black bg-white text-black hover:bg-black hover:text-white",
-        destructive: "border-2 border-black bg-black text-white hover:bg-red-600",
-        outline: "border-2 border-black bg-transparent hover:bg-black hover:text-white",
-        ghost: "hover:bg-black hover:text-white",
-      },
-      size: {
-        default: "h-12 px-6 py-3 text-sm",
-        sm: "h-9 px-4 text-xs",
-        lg: "h-14 px-8 text-base",
-        icon: "h-10 w-10",
-      },
-      shadow: {
-        none: "",
-        default: "shadow-brutal hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-sm",
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-      shadow: "none",
-    },
-  }
-)
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'secondary' | 'outline' | 'ghost';
+  size?: 'default' | 'sm' | 'lg';
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, shadow, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className = '', variant = 'default', size = 'default', ...props }, ref) => {
+    const baseStyles = "inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
+    
+    const variants = {
+      default: "border-2 border-border bg-fg text-bg hover:bg-bg hover:text-fg",
+      secondary: "border-2 border-border bg-bg text-fg hover:bg-fg hover:text-bg",
+      outline: "border-2 border-border bg-transparent hover:bg-fg hover:text-bg",
+      ghost: "hover:bg-fg hover:text-bg",
+    };
+    
+    const sizes = {
+      default: "h-12 px-6 py-3 text-sm",
+      sm: "h-9 px-4 text-xs",
+      lg: "h-14 px-8 text-base",
+    };
+    
+    const classes = `${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`;
+    
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, shadow, className }))}
+      <button
+        className={classes}
         ref={ref}
         {...props}
       />
-    )
+    );
   }
-)
-Button.displayName = "Button"
-
-export { Button, buttonVariants }
+);
+Button.displayName = "Button";

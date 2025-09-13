@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, Clock, CheckCircle, AlertCircle, Upload, Search } from 'lucide-react';
+import { Video, Clock, CheckCircle, Upload, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
-  // Mock data
+  // Mock data - no database connection
   const stats = {
     totalVideos: 12,
     processedToday: 3,
@@ -24,7 +24,7 @@ export default function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-4xl font-bold uppercase mb-2">Dashboard</h1>
-        <p className="font-mono text-sm text-gray-600">
+        <p className="font-mono text-sm text-muted-fg">
           Welcome back! Here's your video analysis overview.
         </p>
       </div>
@@ -37,7 +37,7 @@ export default function DashboardPage() {
               <Video className="w-8 h-8" />
               <span className="text-2xl font-bold">{stats.totalVideos}</span>
             </div>
-            <p className="font-mono text-xs uppercase text-gray-600">Total Videos</p>
+            <p className="font-mono text-xs uppercase text-muted-fg">Total Videos</p>
           </CardContent>
         </Card>
 
@@ -47,7 +47,7 @@ export default function DashboardPage() {
               <CheckCircle className="w-8 h-8" />
               <span className="text-2xl font-bold">{stats.processedToday}</span>
             </div>
-            <p className="font-mono text-xs uppercase text-gray-600">Processed Today</p>
+            <p className="font-mono text-xs uppercase text-muted-fg">Processed Today</p>
           </CardContent>
         </Card>
 
@@ -57,7 +57,7 @@ export default function DashboardPage() {
               <Clock className="w-8 h-8" />
               <span className="text-2xl font-bold">{stats.minutesUsed}</span>
             </div>
-            <p className="font-mono text-xs uppercase text-gray-600">Minutes Used</p>
+            <p className="font-mono text-xs uppercase text-muted-fg">Minutes Used</p>
           </CardContent>
         </Card>
 
@@ -67,44 +67,44 @@ export default function DashboardPage() {
               <div className="flex justify-between mb-1">
                 <span className="text-2xl font-bold">{stats.minutesUsed}/{stats.minutesTotal}</span>
               </div>
-              <div className="h-2 bg-gray-200 border border-black">
+              <div className="h-2 bg-muted border border-border">
                 <div 
-                  className="h-full bg-black" 
+                  className="h-full bg-fg" 
                   style={{ width: `${(stats.minutesUsed / stats.minutesTotal) * 100}%` }}
                 />
               </div>
             </div>
-            <p className="font-mono text-xs uppercase text-gray-600">Usage Limit</p>
+            <p className="font-mono text-xs uppercase text-muted-fg">Usage Limit</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card className="shadow-brutal">
+        <Card className="brutal-shadow">
           <CardContent className="p-8">
             <Upload className="w-12 h-12 mb-4" />
             <h3 className="text-xl font-bold uppercase mb-2">Upload New Video</h3>
-            <p className="font-mono text-sm text-gray-600 mb-4">
+            <p className="font-mono text-sm text-muted-fg mb-4">
               Start analyzing a new video with AI
             </p>
             <Link href="/upload">
-              <Button className="shadow-brutal">
+              <Button className="brutal-shadow">
                 Upload Video
               </Button>
             </Link>
           </CardContent>
         </Card>
 
-        <Card className="shadow-brutal">
+        <Card className="brutal-shadow">
           <CardContent className="p-8">
             <Search className="w-12 h-12 mb-4" />
             <h3 className="text-xl font-bold uppercase mb-2">Search Videos</h3>
-            <p className="font-mono text-sm text-gray-600 mb-4">
+            <p className="font-mono text-sm text-muted-fg mb-4">
               Find specific moments in your processed videos
             </p>
             <Link href="/search">
-              <Button variant="secondary" className="shadow-brutal">
+              <Button variant="secondary" className="brutal-shadow">
                 Start Searching
               </Button>
             </Link>
@@ -121,7 +121,7 @@ export default function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-black">
+                <tr className="border-b-2 border-border">
                   <th className="text-left p-4 font-bold uppercase text-sm">Name</th>
                   <th className="text-left p-4 font-bold uppercase text-sm">Status</th>
                   <th className="text-left p-4 font-bold uppercase text-sm">Duration</th>
@@ -131,7 +131,7 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {recentVideos.map((video) => (
-                  <tr key={video.id} className="border-b border-gray-200">
+                  <tr key={video.id} className="border-b border-border">
                     <td className="p-4 font-mono text-sm">{video.name}</td>
                     <td className="p-4">
                       {video.status === 'completed' && (
@@ -145,7 +145,7 @@ export default function DashboardPage() {
                       )}
                     </td>
                     <td className="p-4 font-mono text-sm">{video.duration}</td>
-                    <td className="p-4 font-mono text-sm text-gray-600">{video.date}</td>
+                    <td className="p-4 font-mono text-sm text-muted-fg">{video.date}</td>
                     <td className="p-4">
                       <Link href={`/videos/${video.id}`}>
                         <Button size="sm" variant="outline">

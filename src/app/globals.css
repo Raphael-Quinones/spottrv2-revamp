@@ -4,71 +4,60 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 0 0% 90%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 0 0% 0%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 0%;
-    --input: 0 0% 0%;
-    --ring: 0 0% 0%;
-    --radius: 0px;
+    /* Light mode - Pure white and black */
+    --color-bg: 255 255 255;      /* white */
+    --color-fg: 0 0 0;            /* black */
+    --color-border: 0 0 0;        /* black */
+    --color-muted: 245 245 245;   /* very light gray for subtle backgrounds */
+    --color-muted-fg: 102 102 102; /* gray for less important text */
   }
-}
 
-@layer base {
+  .dark {
+    /* Dark mode - Pure black and white */
+    --color-bg: 0 0 0;            /* black */
+    --color-fg: 255 255 255;      /* white */
+    --color-border: 255 255 255;  /* white */
+    --color-muted: 10 10 10;      /* very dark for subtle backgrounds */
+    --color-muted-fg: 153 153 153; /* light gray for less important text */
+  }
+
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-bg text-fg font-sans antialiased;
   }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold uppercase tracking-tight;
   }
 }
 
 @layer components {
+  /* Brutalist design system */
   .brutal-border {
-    @apply border-2 border-black;
+    @apply border-2 border-border;
   }
   
   .brutal-border-thick {
-    @apply border-4 border-black;
+    @apply border-4 border-border;
   }
   
   .brutal-shadow {
-    @apply shadow-brutal;
+    box-shadow: 4px 4px 0 rgb(var(--color-border));
+  }
+
+  .brutal-shadow-lg {
+    box-shadow: 6px 6px 0 rgb(var(--color-border));
   }
   
   .brutal-shadow-hover {
-    @apply hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-brutal-sm transition-all;
+    @apply transition-all;
   }
-  
-  .brutal-button {
-    @apply px-6 py-3 font-bold uppercase tracking-wide border-2 border-black bg-white text-black hover:bg-black hover:text-white transition-colors;
-  }
-  
-  .brutal-button-primary {
-    @apply px-6 py-3 font-bold uppercase tracking-wide border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors;
-  }
-  
-  .brutal-input {
-    @apply w-full px-4 py-3 font-mono border-2 border-black focus:outline-none focus:border-4 transition-all;
-  }
-  
-  .brutal-card {
-    @apply bg-white border-2 border-black p-6;
+
+  .brutal-shadow-hover:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgb(var(--color-border));
   }
 }

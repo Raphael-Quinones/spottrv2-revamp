@@ -12,14 +12,14 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login:', { email, password });
+    // Mock login - no actual authentication
+    alert('This is a mockup - no actual login functionality');
   };
 
   return (
     <>
       <h1 className="text-3xl font-bold uppercase mb-2">Welcome Back</h1>
-      <p className="font-mono text-sm text-gray-600 mb-8">
+      <p className="font-mono text-sm text-muted-fg mb-8">
         Sign in to continue to your dashboard
       </p>
 
@@ -53,23 +53,23 @@ export default function LoginPage() {
         <div className="flex items-center justify-between">
           <Link 
             href="/forgot-password" 
-            className="font-mono text-xs uppercase hover:bg-black hover:text-white px-2 py-1 transition-colors"
+            className="font-mono text-xs uppercase hover:bg-fg hover:text-bg px-2 py-1 transition-colors"
           >
             Forgot Password?
           </Link>
         </div>
 
-        <Button type="submit" className="w-full shadow-brutal">
+        <Button type="submit" className="w-full brutal-shadow">
           Sign In
         </Button>
       </form>
 
-      <div className="mt-8 pt-8 border-t-2 border-black text-center">
+      <div className="mt-8 pt-8 border-t-2 border-border text-center">
         <p className="font-mono text-sm">
           Don't have an account?{' '}
           <Link 
             href="/signup" 
-            className="font-bold uppercase hover:bg-black hover:text-white px-2 py-1 transition-colors"
+            className="font-bold uppercase hover:bg-fg hover:text-bg px-2 py-1 transition-colors"
           >
             Sign Up
           </Link>
