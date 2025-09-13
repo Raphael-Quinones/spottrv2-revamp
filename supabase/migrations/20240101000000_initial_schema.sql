@@ -26,7 +26,7 @@ CREATE TABLE videos (
     duration_seconds FLOAT,
     status video_status DEFAULT 'pending',
     accuracy_level accuracy_level NOT NULL,
-    search_prompt TEXT NOT NULL,
+    analysis_scope TEXT NOT NULL,
     frame_interval FLOAT DEFAULT 0.5,
     progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
     error_message TEXT,
@@ -46,16 +46,6 @@ CREATE TABLE video_analysis (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Search results cache
-CREATE TABLE search_results (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    video_id UUID NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
-    query TEXT NOT NULL,
-    timestamps JSONB NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    expires_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW() + INTERVAL '7 days')
-);
-
 -- Processing queue
 CREATE TABLE processing_queue (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -71,8 +61,6 @@ CREATE INDEX idx_videos_user_id ON videos(user_id);
 CREATE INDEX idx_videos_status ON videos(status);
 CREATE INDEX idx_video_analysis_video_id ON video_analysis(video_id);
 CREATE INDEX idx_video_analysis_timestamp ON video_analysis(timestamp);
-CREATE INDEX idx_search_results_video_id ON search_results(video_id);
-CREATE INDEX idx_search_results_query ON search_results(query);
 CREATE INDEX idx_processing_queue_priority ON processing_queue(priority DESC);
 CREATE INDEX idx_processing_queue_created_at ON processing_queue(created_at);
 
@@ -96,7 +84,6 @@ CREATE TRIGGER update_videos_updated_at BEFORE UPDATE ON videos
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE video_analysis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE search_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE processing_queue ENABLE ROW LEVEL SECURITY;
 
 -- Users can only see their own data
@@ -125,25 +112,6 @@ CREATE POLICY "Users can view analysis of own videos" ON video_analysis
         EXISTS (
             SELECT 1 FROM videos
             WHERE videos.id = video_analysis.video_id
-            AND videos.user_id = auth.uid()
-        )
-    );
-
--- Search results policies
-CREATE POLICY "Users can view search results of own videos" ON search_results
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM videos
-            WHERE videos.id = search_results.video_id
-            AND videos.user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can insert search results for own videos" ON search_results
-    FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM videos
-            WHERE videos.id = search_results.video_id
             AND videos.user_id = auth.uid()
         )
     );
