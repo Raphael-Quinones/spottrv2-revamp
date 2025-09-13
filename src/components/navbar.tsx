@@ -40,12 +40,6 @@ export function Navbar() {
             >
               Videos
             </Link>
-            <Link 
-              href="/search" 
-              className="font-mono text-sm uppercase text-fg hover:bg-fg hover:text-bg px-3 py-1 transition-colors"
-            >
-              Search
-            </Link>
           </div>
 
           {/* Right side icons */}
@@ -88,12 +82,6 @@ export function Navbar() {
               className="block font-mono text-sm uppercase text-fg hover:bg-fg hover:text-bg px-3 py-2 transition-colors"
             >
               Videos
-            </Link>
-            <Link 
-              href="/search" 
-              className="block font-mono text-sm uppercase text-fg hover:bg-fg hover:text-bg px-3 py-2 transition-colors"
-            >
-              Search
             </Link>
           </div>
         </div>

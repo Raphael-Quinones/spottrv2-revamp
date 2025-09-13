@@ -17,7 +17,6 @@ const sidebarItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/upload', label: 'Upload', icon: Upload },
   { href: '/videos', label: 'Videos', icon: Video },
-  { href: '/search', label: 'Search', icon: Search },
   { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/billing', label: 'Billing', icon: CreditCard },
 ];

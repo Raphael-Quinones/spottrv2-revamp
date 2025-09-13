@@ -15,7 +15,7 @@ export default function VideosPage() {
       duration: '2:34',
       size: '125 MB',
       date: '2024-01-15',
-      prompt: 'Find all license plates',
+      analysisScope: 'Analyze everything',
       matches: 12,
     },
     {
@@ -26,7 +26,7 @@ export default function VideosPage() {
       duration: '5:12',
       size: '250 MB',
       date: '2024-01-14',
-      prompt: 'Detect people entering the building',
+      analysisScope: 'Focus on people and entrances',
     },
     {
       id: 3,
@@ -35,7 +35,7 @@ export default function VideosPage() {
       duration: '3:45',
       size: '180 MB',
       date: '2024-01-13',
-      prompt: 'Identify road signs',
+      analysisScope: 'Track all road signs and text',
       matches: 23,
     },
     {
@@ -45,7 +45,7 @@ export default function VideosPage() {
       duration: '1:20',
       size: '65 MB',
       date: '2024-01-12',
-      prompt: 'Track customer movement',
+      analysisScope: 'Focus on people movements',
     },
     {
       id: 5,
@@ -54,7 +54,7 @@ export default function VideosPage() {
       duration: '10:00',
       size: '450 MB',
       date: '2024-01-11',
-      prompt: 'Find red vehicles',
+      analysisScope: 'Analyze all vehicles',
       matches: 8,
     },
     {
@@ -64,7 +64,7 @@ export default function VideosPage() {
       duration: '7:30',
       size: '320 MB',
       date: '2024-01-10',
-      prompt: 'Identify buildings',
+      analysisScope: 'Focus on buildings and structures',
     },
   ];
 
@@ -115,7 +115,7 @@ export default function VideosPage() {
               </h3>
               
               <p className="font-mono text-xs text-muted-fg mb-4 line-clamp-2">
-                "{video.prompt}"
+                Analysis: {video.analysisScope}
               </p>
               
               <div className="space-y-1 mb-4">

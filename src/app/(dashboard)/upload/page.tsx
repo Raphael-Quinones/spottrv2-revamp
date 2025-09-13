@@ -65,15 +65,18 @@ export default function UploadPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="prompt">Search Prompt</Label>
+              <Label htmlFor="prompt">What to Analyze</Label>
               <textarea
                 id="prompt"
                 className="w-full mt-2 p-3 border-2 border-border bg-bg font-mono text-sm resize-none focus:outline-none focus:border-4 transition-all"
                 rows={4}
-                placeholder="e.g., Find all license plates..."
+                placeholder="e.g., Analyze everything, Focus on vehicles and people, Track all text and signs..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />
+              <p className="mt-2 font-mono text-xs text-muted-fg">
+                AI will catalog everything it finds. You can search for specific items later when viewing the video.
+              </p>
             </div>
             
             <div>

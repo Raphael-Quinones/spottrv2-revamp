@@ -23,7 +23,7 @@ Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to pr
   - Accurate (GPT-5 nano)
   - Moderately Accurate (GPT-5 mini)  
   - Highly Accurate (GPT-5)
-- Specify search prompt (e.g., "find all license plates")
+- Specify analysis scope (e.g., "analyze everything" or "focus on vehicles")
 - Video is processed in frames (default 0.5s intervals, user configurable)
 - Frames are concatenated with timestamps in upper right
 - Progress tracking with percentage display
@@ -36,12 +36,12 @@ Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to pr
 - JSON mode for all API responses
 - Results concatenated to video record in database
 
-### 3. Search & Playback
-- Query processed videos with natural language
-- Timestamp extraction for matching content
-- Custom video player with progress bar
-- Highlighted segments where matches occur
-- Draggable progress bar for navigation
+### 3. Video Analysis & Search
+- AI catalogs everything found in the video
+- Search happens within individual video's analysis
+- Real-time filtering of pre-analyzed data
+- Custom video player with timeline highlights
+- Jump to specific timestamps from search results
 
 ## Database Schema
 
@@ -54,7 +54,7 @@ Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to pr
 - url (text)
 - status (enum: pending, processing, completed, failed)
 - accuracy_level (enum: nano, mini, full)
-- search_prompt (text)
+- analysis_scope (text) # What to analyze in the video
 - frame_interval (float, default 0.5)
 - progress (integer, 0-100)
 - created_at (timestamp)
@@ -65,16 +65,11 @@ Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to pr
 - video_id (uuid, foreign key)
 - timestamp (float)
 - frame_number (integer)
-- analysis_result (jsonb)
+- analysis_result (jsonb) # Contains all detections: {type, description, confidence, bounding_box}
 - tokens_used (integer)
 - created_at (timestamp)
 
-#### search_results
-- id (uuid, primary key)
-- video_id (uuid, foreign key)
-- query (text)
-- timestamps (jsonb array)
-- created_at (timestamp)
+# Note: search_results table removed - searches are ephemeral and happen client-side
 
 #### users
 - id (uuid, primary key)
@@ -104,11 +99,7 @@ Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to pr
 - Send to OpenAI API
 - Store analysis results
 
-### /api/search
-- POST: Search within analyzed video
-- Check feature access via Autumn
-- Chunk management for 350k token limit
-- Return relevant timestamps
+# Note: /api/search endpoint removed - search happens client-side on pre-analyzed data
 
 ### /api/videos
 - GET: List user's videos
@@ -137,10 +128,10 @@ NEXT_PUBLIC_AUTUMN_BACKEND_URL=
 
 ### Key Pages
 1. **Dashboard**: Video library, processing queue
-2. **Upload**: Drag-drop interface, accuracy selection
-3. **Video Player**: Custom player with timeline highlights
-4. **Search**: Natural language query interface
-5. **Settings**: Frame interval, API preferences
+2. **Upload**: Drag-drop interface, analysis scope selection
+3. **Video Detail**: Custom player with integrated search of analysis results
+4. **Settings**: Frame interval, API preferences
+5. **Billing**: Subscription management
 
 ## Implementation Notes
 
