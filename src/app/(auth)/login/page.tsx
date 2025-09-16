@@ -1,20 +1,52 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { signIn } from '../actions';
+import { useState, useEffect, Suspense } from 'react';
+import { useFormStatus } from 'react-dom';
+import { useSearchParams } from 'next/navigation';
+import { CheckCircle } from 'lucide-react';
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+function SubmitButton() {
+  const { pending } = useFormStatus();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Mock login - no actual authentication
-    alert('This is a mockup - no actual login functionality');
-  };
+  return (
+    <Button type="submit" className="w-full brutal-shadow" disabled={pending}>
+      {pending ? 'Signing in...' : 'Sign In'}
+    </Button>
+  );
+}
+
+function LoginForm() {
+  const [error, setError] = useState<string | null>(null);
+  const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Check if user just verified their email
+    if (searchParams.get('verified') === 'true') {
+      setShowVerifiedMessage(true);
+      // Remove the query param after showing the message
+      window.history.replaceState({}, '', '/login');
+      setTimeout(() => setShowVerifiedMessage(false), 5000);
+    }
+  }, [searchParams]);
+
+  async function handleSignIn(formData: FormData) {
+    setError(null);
+    const result = await signIn(formData);
+    if (result?.error) {
+      // Check if it's an email verification error
+      if (result.error.includes('Email not confirmed')) {
+        setError('Please verify your email before signing in. Check your inbox for the verification link.');
+      } else {
+        setError(result.error);
+      }
+    }
+  }
 
   return (
     <>
@@ -23,15 +55,31 @@ export default function LoginPage() {
         Sign in to continue to your dashboard
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {showVerifiedMessage && (
+        <div className="border-2 border-green-500 bg-green-50 dark:bg-green-950 p-3 mb-4">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <p className="text-sm font-mono text-green-600 dark:text-green-400">
+              Email verified successfully! You can now sign in.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="border-2 border-red-500 bg-red-50 dark:bg-red-950 p-3 mb-4">
+          <p className="text-sm font-mono text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      <form action={handleSignIn} className="space-y-6">
         <div>
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
+            name="email"
             type="email"
             placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             required
             className="mt-2"
           />
@@ -41,10 +89,9 @@ export default function LoginPage() {
           <Label htmlFor="password">Password</Label>
           <Input
             id="password"
+            name="password"
             type="password"
             placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
             className="mt-2"
           />
@@ -59,9 +106,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <Button type="submit" className="w-full brutal-shadow">
-          Sign In
-        </Button>
+        <SubmitButton />
       </form>
 
       <div className="mt-8 pt-8 border-t-2 border-border text-center">
@@ -76,5 +121,13 @@ export default function LoginPage() {
         </p>
       </div>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

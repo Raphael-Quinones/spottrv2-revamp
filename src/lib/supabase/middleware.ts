@@ -54,7 +54,26 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Define protected routes
+  const protectedRoutes = ['/dashboard', '/upload', '/videos', '/settings', '/billing']
+  const authRoutes = ['/login', '/signup']
+  const pathname = request.nextUrl.pathname
+
+  // Check if current path is protected
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
+  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route))
+
+  // Redirect to login if accessing protected route without auth
+  if (isProtectedRoute && !user) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Redirect to dashboard if accessing auth routes while logged in
+  if (isAuthRoute && user) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
 
   return response
 }

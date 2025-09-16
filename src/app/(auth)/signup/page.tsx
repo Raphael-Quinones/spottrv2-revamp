@@ -1,22 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { signUp } from '../actions';
+import { useState } from 'react';
+import { useFormStatus } from 'react-dom';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" className="w-full brutal-shadow" disabled={pending}>
+      {pending ? 'Creating account...' : 'Create Account'}
+    </Button>
+  );
+}
 
 export default function SignupPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Mock signup - no actual account creation
-    alert('This is a mockup - no actual signup functionality');
-  };
+  async function handleSignUp(formData: FormData) {
+    setError(null);
+
+    // Check passwords match
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirm-password') as string;
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    const result = await signUp(formData);
+    if (result?.error) {
+      setError(result.error);
+    }
+  }
 
   return (
     <>
@@ -25,28 +46,20 @@ export default function SignupPage() {
         Start analyzing videos with AI
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <Label htmlFor="name">Full Name</Label>
-          <Input
-            id="name"
-            type="text"
-            placeholder="John Doe"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="mt-2"
-          />
+      {error && (
+        <div className="border-2 border-red-500 bg-red-50 dark:bg-red-950 p-3 mb-4">
+          <p className="text-sm font-mono text-red-600 dark:text-red-400">{error}</p>
         </div>
+      )}
 
+      <form action={handleSignUp} className="space-y-6">
         <div>
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
+            name="email"
             type="email"
             placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             required
             className="mt-2"
           />
@@ -56,10 +69,10 @@ export default function SignupPage() {
           <Label htmlFor="password">Password</Label>
           <Input
             id="password"
+            name="password"
             type="password"
             placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            minLength={6}
             required
             className="mt-2"
           />
@@ -69,19 +82,17 @@ export default function SignupPage() {
           <Label htmlFor="confirm-password">Confirm Password</Label>
           <Input
             id="confirm-password"
+            name="confirm-password"
             type="password"
             placeholder="••••••••"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            minLength={6}
             required
             className="mt-2"
           />
         </div>
 
         <div className="space-y-4">
-          <Button type="submit" className="w-full brutal-shadow">
-            Create Account
-          </Button>
+          <SubmitButton />
           
           <p className="font-mono text-xs text-center text-muted-fg">
             By signing up, you agree to our Terms of Service and Privacy Policy

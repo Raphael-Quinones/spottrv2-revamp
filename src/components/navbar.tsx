@@ -1,12 +1,60 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Menu, User } from 'lucide-react';
-import { useState } from 'react';
+import { Bell, Menu, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from './theme-toggle';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    // Get initial user
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+
+    getUser();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Close dropdown when clicking outside
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    setUserMenuOpen(false);
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <nav className="border-b-4 border-border bg-bg">
@@ -48,10 +96,67 @@ export function Navbar() {
             <button className="p-2 hover:bg-fg hover:text-bg transition-colors">
               <Bell className="w-5 h-5" />
             </button>
-            <button className="p-2 hover:bg-fg hover:text-bg transition-colors">
-              <User className="w-5 h-5" />
-            </button>
-            <button 
+
+            {/* User Menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                className="p-2 hover:bg-fg hover:text-bg transition-colors flex items-center space-x-1"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                disabled={loading}
+              >
+                <User className="w-5 h-5" />
+                {!loading && (
+                  <ChevronDown className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                )}
+              </button>
+
+              {userMenuOpen && !loading && (
+                <div className="absolute right-0 mt-2 w-56 bg-bg border-4 border-border shadow-brutal z-50">
+                  {user ? (
+                    <>
+                      <div className="px-4 py-3 border-b-2 border-border">
+                        <p className="text-sm font-mono text-muted-fg">Signed in as</p>
+                        <p className="text-sm font-bold truncate">{user.email}</p>
+                      </div>
+                      <Link
+                        href="/settings"
+                        className="flex items-center space-x-2 px-4 py-2 text-sm font-mono hover:bg-fg hover:text-bg transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>Settings</span>
+                      </Link>
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm font-mono hover:bg-fg hover:text-bg transition-colors w-full text-left"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        className="block px-4 py-2 text-sm font-mono hover:bg-fg hover:text-bg transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="block px-4 py-2 text-sm font-mono hover:bg-fg hover:text-bg transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
               className="md:hidden p-2 hover:bg-fg hover:text-bg transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
