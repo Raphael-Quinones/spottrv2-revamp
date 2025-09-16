@@ -2,167 +2,143 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileVideo, Clock, Search } from 'lucide-react';
+import { FileVideo, Clock, Search, AlertCircle, Upload } from 'lucide-react';
 import Link from 'next/link';
+import { getAllVideos } from '../actions';
+import { formatDuration, formatFileSize, formatDate, formatRelativeTime } from '@/lib/utils';
 
-export default function VideosPage() {
-  // Mock data - no database connection
-  const videos = [
-    {
-      id: 1,
-      name: 'traffic_cam_001.mp4',
-      status: 'completed',
-      duration: '2:34',
-      size: '125 MB',
-      date: '2024-01-15',
-      analysisScope: 'Analyze everything',
-      matches: 12,
-    },
-    {
-      id: 2,
-      name: 'security_footage.mp4',
-      status: 'processing',
-      progress: 65,
-      duration: '5:12',
-      size: '250 MB',
-      date: '2024-01-14',
-      analysisScope: 'Focus on people and entrances',
-    },
-    {
-      id: 3,
-      name: 'dashcam_highway.mp4',
-      status: 'completed',
-      duration: '3:45',
-      size: '180 MB',
-      date: '2024-01-13',
-      analysisScope: 'Track all road signs and text',
-      matches: 23,
-    },
-    {
-      id: 4,
-      name: 'store_surveillance.mp4',
-      status: 'failed',
-      duration: '1:20',
-      size: '65 MB',
-      date: '2024-01-12',
-      analysisScope: 'Focus on people movements',
-    },
-    {
-      id: 5,
-      name: 'parking_lot.mp4',
-      status: 'completed',
-      duration: '10:00',
-      size: '450 MB',
-      date: '2024-01-11',
-      analysisScope: 'Analyze all vehicles',
-      matches: 8,
-    },
-    {
-      id: 6,
-      name: 'drone_footage.mp4',
-      status: 'queued',
-      duration: '7:30',
-      size: '320 MB',
-      date: '2024-01-10',
-      analysisScope: 'Focus on buildings and structures',
-    },
-  ];
+export default async function VideosPage() {
+  // Fetch real videos from database
+  const videos = await getAllVideos();
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold uppercase mb-2">Videos</h1>
-        <p className="font-mono text-sm text-muted-fg">
-          Manage and review your processed videos
-        </p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-bold uppercase mb-2">Videos</h1>
+          <p className="font-mono text-sm text-muted-fg">
+            Manage and search your analyzed videos
+          </p>
+        </div>
+        <Link href="/upload">
+          <Button className="brutal-shadow">
+            <Upload className="w-4 h-4 mr-2" />
+            Upload New
+          </Button>
+        </Link>
       </div>
 
       {/* Search Bar */}
-      <div className="flex gap-4 mb-8">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-fg" />
-          <Input 
-            placeholder="Search videos..." 
-            className="pl-10"
+      <div className="mb-8">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-fg" />
+          <Input
+            type="text"
+            placeholder="Search videos..."
+            className="pl-12 py-6 text-lg border-4"
+            disabled // Will implement search later
           />
         </div>
-        <Button variant="secondary">Filter</Button>
       </div>
 
       {/* Videos Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {videos.map((video) => (
-          <Card key={video.id} className="brutal-shadow-hover">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <FileVideo className="w-8 h-8" />
-                {video.status === 'completed' && (
-                  <Badge variant="success">Completed</Badge>
-                )}
-                {video.status === 'processing' && (
-                  <Badge variant="warning">Processing</Badge>
-                )}
-                {video.status === 'failed' && (
-                  <Badge variant="destructive">Failed</Badge>
-                )}
-                {video.status === 'queued' && (
-                  <Badge variant="secondary">Queued</Badge>
-                )}
-              </div>
-              
-              <h3 className="font-bold uppercase text-sm mb-2 truncate">
-                {video.name}
-              </h3>
-              
-              <p className="font-mono text-xs text-muted-fg mb-4 line-clamp-2">
-                Analysis: {video.analysisScope}
-              </p>
-              
-              <div className="space-y-1 mb-4">
-                <div className="flex justify-between font-mono text-xs">
-                  <span className="text-muted-fg">Duration:</span>
-                  <span>{video.duration}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {videos.length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <FileVideo className="w-16 h-16 mx-auto mb-4 opacity-50" />
+            <h3 className="text-xl font-bold uppercase mb-2">No Videos Yet</h3>
+            <p className="font-mono text-sm text-muted-fg mb-4">
+              Upload your first video to get started
+            </p>
+            <Link href="/upload">
+              <Button className="brutal-shadow">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Video
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          videos.map((video: any) => (
+            <Card key={video.id} className="brutal-shadow hover:shadow-brutal-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <FileVideo className="w-8 h-8" />
+                  {video.status === 'completed' && (
+                    <Badge variant="success">Completed</Badge>
+                  )}
+                  {video.status === 'processing' && (
+                    <Badge variant="warning">
+                      Processing {video.progress > 0 && `${video.progress}%`}
+                    </Badge>
+                  )}
+                  {video.status === 'pending' && (
+                    <Badge variant="secondary">Pending</Badge>
+                  )}
+                  {video.status === 'failed' && (
+                    <Badge variant="destructive">Failed</Badge>
+                  )}
                 </div>
-                <div className="flex justify-between font-mono text-xs">
-                  <span className="text-muted-fg">Size:</span>
-                  <span>{video.size}</span>
+
+                <h3 className="font-bold text-lg mb-2 truncate" title={video.filename}>
+                  {video.filename}
+                </h3>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between font-mono text-sm">
+                    <span className="text-muted-fg">Duration</span>
+                    <span>{video.duration_seconds ? formatDuration(video.duration_seconds) : '-'}</span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-sm">
+                    <span className="text-muted-fg">Size</span>
+                    <span>{video.file_size ? formatFileSize(video.file_size) : '-'}</span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-sm">
+                    <span className="text-muted-fg">Date</span>
+                    <span>{formatDate(video.created_at)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between font-mono text-xs">
-                  <span className="text-muted-fg">Date:</span>
-                  <span>{video.date}</span>
-                </div>
-                {video.matches !== undefined && (
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-muted-fg">Matches:</span>
-                    <span className="font-bold">{video.matches}</span>
+
+                {video.analysis_scope && (
+                  <div className="mb-4">
+                    <p className="font-mono text-xs text-muted-fg mb-1">Analysis Scope</p>
+                    <p className="text-sm truncate" title={video.analysis_scope}>
+                      {video.analysis_scope}
+                    </p>
                   </div>
                 )}
-              </div>
-              
-              {video.status === 'processing' && video.progress && (
-                <div className="mb-4">
-                  <div className="h-2 bg-muted border border-border">
-                    <div 
-                      className="h-full bg-fg transition-all" 
-                      style={{ width: `${video.progress}%` }}
-                    />
+
+                {video.status === 'processing' && video.progress > 0 && (
+                  <div className="mb-4">
+                    <div className="h-2 bg-muted border border-border">
+                      <div
+                        className="h-full bg-fg transition-all"
+                        style={{ width: `${video.progress}%` }}
+                      />
+                    </div>
                   </div>
-                  <p className="font-mono text-xs mt-1">{video.progress}% Complete</p>
+                )}
+
+                {video.status === 'failed' && video.error_message && (
+                  <div className="mb-4 flex items-start space-x-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-fg">{video.error_message}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs text-muted-fg">
+                    {formatRelativeTime(video.created_at)}
+                  </span>
+                  <Link href={`/videos/${video.id}`}>
+                    <Button size="sm" variant="outline">
+                      View Details
+                    </Button>
+                  </Link>
                 </div>
-              )}
-              
-              <Link href={`/videos/${video.id}`}>
-                <Button 
-                  variant={video.status === 'completed' ? 'default' : 'outline'} 
-                  className="w-full"
-                  disabled={video.status !== 'completed'}
-                >
-                  {video.status === 'completed' ? 'View Results' : 'View Details'}
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );
