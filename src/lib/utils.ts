@@ -90,15 +90,15 @@ export function getUsageLimitByTier(tier: string): number {
 // Format minutes to hours and minutes
 export function formatMinutes(minutes: number): string {
   if (minutes < 60) {
-    return `${minutes.toFixed(1)} min`;
+    return `${minutes.toFixed(1)}`;
   }
 
   const hours = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
 
   if (mins === 0) {
-    return `${hours} hr`;
+    return `${hours}h`;
   }
 
-  return `${hours} hr ${mins} min`;
+  return `${hours}h ${mins}m`;
 }
