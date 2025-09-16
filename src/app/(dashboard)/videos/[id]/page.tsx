@@ -1,234 +1,254 @@
-'use client';
-
-import { useState } from 'react';
+import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Search,
-  Clock,
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import {
   FileVideo,
-  Download
+  Clock,
+  Activity,
+  AlertCircle,
+  CheckCircle,
+  Download,
+  Trash,
+  Search,
+  Play
 } from 'lucide-react';
+import { getVideoById, deleteVideo } from '../../actions';
+import { formatDuration, formatFileSize, formatDate, formatRelativeTime } from '@/lib/utils';
+import Link from 'next/link';
 
-export default function VideoDetailPage({ params }: { params: { id: string } }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isPlaying, setIsPlaying] = useState(false);
-  
-  // Mock video data
-  const video = {
-    id: params.id,
-    name: 'traffic_cam_001.mp4',
-    duration: '2:34',
-    uploadDate: '2024-01-15',
-    processDate: '2024-01-15',
-    analysisScope: 'Analyze everything in the video',
-  };
+export default async function VideoDetailPage({
+  params
+}: {
+  params: { id: string }
+}) {
+  const video = await getVideoById(params.id);
 
-  // Comprehensive mock analysis data - everything AI found
-  const allAnalysisData = [
-    { timestamp: '0:15', content: 'License plate ABC-123' },
-    { timestamp: '0:15', content: 'Red sedan' },
-    { timestamp: '0:18', content: 'Person crossing street' },
-    { timestamp: '0:22', content: 'Blue SUV' },
-    { timestamp: '0:30', content: 'Street sign "Main St"' },
-    { timestamp: '0:35', content: 'Person wearing yellow jacket' },
-    { timestamp: '0:45', content: 'License plate XYZ-789' },
-    { timestamp: '0:45', content: 'White delivery truck' },
-    { timestamp: '0:52', content: 'STOP sign' },
-    { timestamp: '1:05', content: 'Group of people' },
-    { timestamp: '1:10', content: 'Green motorcycle' },
-    { timestamp: '1:15', content: 'Traffic light red' },
-    { timestamp: '1:23', content: 'License plate DEF-456' },
-    { timestamp: '1:30', content: 'Person with dog' },
-    { timestamp: '1:35', content: 'Yellow taxi' },
-    { timestamp: '1:45', content: 'Coffee Shop sign' },
-    { timestamp: '1:50', content: 'Fire hydrant' },
-    { timestamp: '2:00', content: 'Cyclist' },
-    { timestamp: '2:10', content: 'License plate GHI-012' },
-    { timestamp: '2:15', content: 'Black sedan' },
-  ];
+  if (!video) {
+    notFound();
+  }
 
-  // Filter data based on search
-  const searchResults = searchQuery.trim() 
-    ? allAnalysisData.filter(item => 
-        item.content.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
-  // Convert timestamp to percentage for progress bar
-  const timestampToPercent = (timestamp: string) => {
-    const [min, sec] = timestamp.split(':').map(Number);
-    const totalSeconds = min * 60 + sec;
-    const videoDuration = 154; // 2:34 in seconds
-    return (totalSeconds / videoDuration) * 100;
-  };
-
-  // Get unique timestamps for progress bar highlights
-  const highlightPositions = searchResults.map(item => timestampToPercent(item.timestamp));
+  const isProcessing = video.status === 'processing';
+  const isCompleted = video.status === 'completed';
+  const isFailed = video.status === 'failed';
+  const isPending = video.status === 'pending';
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold uppercase mb-2">{video.name}</h1>
-        <p className="font-mono text-sm text-muted-fg">
-          Processed on {video.processDate}
-        </p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-bold uppercase mb-2">{video.filename}</h1>
+          <p className="font-mono text-sm text-muted-fg">
+            Uploaded {formatRelativeTime(video.created_at)}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Link href="/videos">
+            <Button variant="outline">
+              Back to Videos
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Video Player */}
+      {/* Status Card */}
       <Card className="mb-8">
-        <CardContent className="p-0">
-          <div className="relative bg-fg aspect-video flex items-center justify-center">
-            <FileVideo className="w-24 h-24 text-bg opacity-50" />
-            
-            {/* Player Controls */}
-            <div className="absolute bottom-0 left-0 right-0 bg-bg/90 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                  >
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </Button>
-                  <Button size="sm" variant="ghost">
-                    <SkipBack className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost">
-                    <SkipForward className="w-4 h-4" />
-                  </Button>
-                </div>
-                <span className="font-mono text-xs">0:00 / {video.duration}</span>
-              </div>
-              
-              {/* Progress Bar with Highlights */}
-              <div className="relative">
-                <div className="h-2 bg-muted border border-border">
-                  <div className="h-full bg-fg" style={{ width: '0%' }} />
-                </div>
-                
-                {/* Search Result Highlights on Timeline */}
-                {searchQuery && searchResults.length > 0 && highlightPositions.map((position, index) => (
-                  <div
-                    key={index}
-                    className="absolute top-0 w-1 h-full bg-yellow-500"
-                    style={{ left: `${position}%` }}
-                    title={searchResults[index].content}
-                  />
-                ))}
+        <CardContent className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              {isCompleted && <CheckCircle className="w-8 h-8 text-green-500" />}
+              {isProcessing && <Activity className="w-8 h-8 text-yellow-500 animate-pulse" />}
+              {isPending && <Clock className="w-8 h-8 text-gray-500" />}
+              {isFailed && <AlertCircle className="w-8 h-8 text-red-500" />}
+
+              <div>
+                <h3 className="text-xl font-bold uppercase">
+                  {isCompleted && 'Analysis Complete'}
+                  {isProcessing && 'Processing Video'}
+                  {isPending && 'Waiting to Process'}
+                  {isFailed && 'Processing Failed'}
+                </h3>
+                <p className="font-mono text-sm text-muted-fg mt-1">
+                  {isProcessing && `${video.progress}% complete`}
+                  {isCompleted && video.video_analysis && `${video.video_analysis.length} frames analyzed`}
+                  {isPending && 'Your video is in the queue'}
+                  {isFailed && video.error_message}
+                </p>
               </div>
             </div>
+
+            <div>
+              {isCompleted && <Badge variant="success">Completed</Badge>}
+              {isProcessing && <Badge variant="warning">Processing</Badge>}
+              {isPending && <Badge variant="secondary">Pending</Badge>}
+              {isFailed && <Badge variant="destructive">Failed</Badge>}
+            </div>
           </div>
+
+          {isProcessing && (
+            <div>
+              <Progress value={video.progress} className="h-4 border-2 border-border" />
+              <p className="font-mono text-xs text-muted-fg mt-2">
+                Processing frame by frame with {video.accuracy_level} accuracy
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Search Section */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Search Video</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-fg" />
-                <Input
-                  placeholder="Search for anything..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+      {/* Video Info Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase">File Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-muted-fg">Size</span>
+              <span>{video.file_size ? formatFileSize(video.file_size) : '-'}</span>
+            </div>
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-muted-fg">Duration</span>
+              <span>{video.duration_seconds ? formatDuration(video.duration_seconds) : '-'}</span>
+            </div>
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-muted-fg">Uploaded</span>
+              <span>{formatDate(video.created_at)}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Search Results - Simple Timestamp List */}
-              {searchQuery && (
-                <div className="space-y-2">
-                  {searchResults.length > 0 ? (
-                    <>
-                      <p className="font-mono text-xs text-muted-fg mb-3">
-                        Found {searchResults.length} results
-                      </p>
-                      <div className="max-h-96 overflow-y-auto space-y-2">
-                        {searchResults.map((result, index) => (
-                          <div 
-                            key={index} 
-                            className="flex items-center justify-between p-3 border-2 border-border hover:bg-muted transition-colors"
-                          >
-                            <span className="font-mono text-sm">{result.content}</span>
-                            <div className="flex items-center gap-2 text-muted-fg">
-                              <Clock className="w-3 h-3" />
-                              <span className="font-mono text-xs">{result.timestamp}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-center py-8 text-muted-fg font-mono text-sm">
-                      No results for "{searchQuery}"
-                    </p>
-                  )}
-                </div>
-              )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase">Analysis Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-muted-fg">Accuracy</span>
+              <span className="capitalize">{video.accuracy_level}</span>
+            </div>
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-muted-fg">Frame Interval</span>
+              <span>{video.frame_interval}s</span>
+            </div>
+            <div className="flex justify-between font-mono text-sm">
+              <span className="text-muted-fg">Status</span>
+              <span className="capitalize">{video.status}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-              {!searchQuery && (
-                <p className="text-center py-8 text-muted-fg font-mono text-sm">
-                  Type to search through the video analysis
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase">Analysis Scope</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">
+              {video.analysis_scope}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Video Preview (if available) */}
+      {video.url && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Video Preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-muted border-4 border-border aspect-video flex items-center justify-center">
+              <video
+                controls
+                className="w-full h-full"
+                src={video.url}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Analysis Results (if completed) */}
+      {isCompleted && video.video_analysis && video.video_analysis.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Analysis Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <p className="font-mono text-sm text-muted-fg">
+                  {video.video_analysis.length} timestamps analyzed
                 </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <Button variant="outline" size="sm">
+                  <Search className="w-4 h-4 mr-2" />
+                  Search Results
+                </Button>
+              </div>
 
-        {/* Video Info */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Video Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between font-mono text-sm">
-                <span className="text-muted-fg">Duration:</span>
-                <span>{video.duration}</span>
+              {/* Show first few analysis results */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {video.video_analysis.slice(0, 10).map((analysis: any, index: number) => (
+                  <div
+                    key={analysis.id}
+                    className="p-3 border-2 border-border bg-muted font-mono text-sm"
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="font-bold">
+                        {formatDuration(analysis.timestamp)}
+                      </span>
+                      <span className="text-xs text-muted-fg">
+                        Frame #{analysis.frame_number}
+                      </span>
+                    </div>
+                    <div className="text-xs">
+                      {JSON.stringify(analysis.analysis_result).substring(0, 200)}...
+                    </div>
+                  </div>
+                ))}
+                {video.video_analysis.length > 10 && (
+                  <p className="text-center font-mono text-sm text-muted-fg py-4">
+                    + {video.video_analysis.length - 10} more results
+                  </p>
+                )}
               </div>
-              <div className="flex justify-between font-mono text-sm">
-                <span className="text-muted-fg">Upload Date:</span>
-                <span>{video.uploadDate}</span>
-              </div>
-              <div className="flex justify-between font-mono text-sm">
-                <span className="text-muted-fg">Process Date:</span>
-                <span>{video.processDate}</span>
-              </div>
-              <div className="font-mono text-sm">
-                <span className="text-muted-fg">Analysis Scope:</span>
-                <p className="mt-1">{video.analysisScope}</p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full" variant="default">
-                <Download className="w-4 h-4 mr-2" />
-                Export Analysis
-              </Button>
-              <Button className="w-full" variant="outline">
-                Delete Video
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Actions */}
+      <div className="flex gap-4 mt-8">
+        {isCompleted && (
+          <Button className="brutal-shadow">
+            <Search className="w-4 h-4 mr-2" />
+            Search Analysis
+          </Button>
+        )}
+        {video.url && (
+          <a href={video.url} download>
+            <Button variant="secondary" className="brutal-shadow">
+              <Download className="w-4 h-4 mr-2" />
+              Download Video
+            </Button>
+          </a>
+        )}
+        <Button
+          variant="outline"
+          className="brutal-shadow border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+          onClick={async () => {
+            if (confirm('Are you sure you want to delete this video?')) {
+              await deleteVideo(video.id);
+              window.location.href = '/videos';
+            }
+          }}
+        >
+          <Trash className="w-4 h-4 mr-2" />
+          Delete Video
+        </Button>
       </div>
     </div>
   );

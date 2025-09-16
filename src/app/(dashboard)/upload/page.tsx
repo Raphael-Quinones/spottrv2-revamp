@@ -25,13 +25,51 @@ export default function UploadPage() {
     });
   }, []);
 
-  // Mock upload handler - will implement actual upload later
-  const handleUpload = () => {
+  // Handle actual video upload
+  const handleUpload = async () => {
+    if (!selectedFile || !prompt) {
+      alert('Please select a file and provide analysis instructions');
+      return;
+    }
+
     if (usage?.isExceeded) {
       alert('You have exceeded your monthly usage limit. Please upgrade your subscription.');
       return;
     }
-    alert('Upload functionality will be implemented with actual file storage');
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('video', selectedFile);
+    formData.append('prompt', prompt);
+    formData.append('accuracy', accuracy);
+    formData.append('frameInterval', frameInterval);
+
+    try {
+      setLoading(true);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      // Redirect to video detail page or show success
+      alert(`Video uploaded successfully! Processing will take approximately ${data.video.estimatedProcessingTime} minutes.`);
+
+      // Redirect to videos page
+      window.location.href = `/videos/${data.video.id}`;
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || 'Failed to upload video. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,9 +265,9 @@ export default function UploadPage() {
       <Button
         className="w-full brutal-shadow text-lg py-6"
         onClick={handleUpload}
-        disabled={!selectedFile || !prompt || !canUpload}
+        disabled={!selectedFile || !prompt || !canUpload || loading}
       >
-        {!canUpload ? 'Usage Limit Exceeded' : 'Start Processing'}
+        {loading ? 'Uploading...' : !canUpload ? 'Usage Limit Exceeded' : 'Start Processing'}
       </Button>
     </div>
   );
