@@ -64,7 +64,7 @@ export default function VideoAnalysisView({ video }: VideoAnalysisViewProps) {
               className="aspect-video"
             />
             {searchRanges.length > 0 && (
-              <div className="mt-4 p-3 bg-yellow-100 border-2 border-yellow-600 font-mono text-sm">
+              <div className="mt-4 p-3 bg-yellow-100 border-2 border-yellow-600 font-mono text-sm text-black">
                 <strong>💡 Tip:</strong> Yellow highlights on the timeline show search matches. Click them to jump to that moment!
               </div>
             )}
