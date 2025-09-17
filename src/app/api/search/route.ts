@@ -20,6 +20,20 @@ function mergeTimestampRanges(matches: any[], frameInterval: number) {
   // Sort by timestamp
   const sortedMatches = [...matches].sort((a, b) => a.timestamp - b.timestamp);
 
+  // Don't merge if frame interval is large (> 60 seconds)
+  // Just create individual ranges for each match
+  if (frameInterval > 60) {
+    return sortedMatches.map(match => ({
+      start: match.timestamp,
+      end: match.timestamp + frameInterval,
+      startFormatted: formatTime(match.timestamp),
+      endFormatted: formatTime(match.timestamp + frameInterval),
+      contexts: [match.context],
+      frames: [match.frame]
+    }));
+  }
+
+  // For smaller intervals, merge adjacent matches
   const ranges: any[] = [];
   let currentRange = {
     start: sortedMatches[0].timestamp,
@@ -32,7 +46,7 @@ function mergeTimestampRanges(matches: any[], frameInterval: number) {
     const match = sortedMatches[i];
 
     // If within interval (or adjacent), merge
-    if (match.timestamp <= currentRange.end) {
+    if (match.timestamp <= currentRange.end + frameInterval) {
       currentRange.end = match.timestamp + frameInterval;
       currentRange.contexts.push(match.context);
       currentRange.frames.push(match.frame);
@@ -85,22 +99,27 @@ async function searchWithGPT5(analyses: any[], query: string, frameInterval: num
         role: 'user',
         content: `You are analyzing video frame data to find specific moments.
 
-Video Analysis Data (frame interval: ${frameInterval} seconds):
+Video Analysis Data:
 ${JSON.stringify(formattedAnalyses, null, 2)}
 
 User Query: "${query}"
 
 Instructions:
 1. Analyze the video data and find ALL timestamps where the query matches
-2. Consider object types, colors, positions, actions, and context
-3. For spatial queries like "right lane" or "left side", consider positioning in the frame
-4. Be thorough - include all relevant matches
+2. Use the EXACT "timestamp" value from the data - DO NOT calculate or convert timestamps
+3. Consider object types, colors, positions, actions, and context
+4. For spatial queries like "right lane" or "left side", consider positioning in the frame
+5. Be thorough - include all relevant matches
+
+CRITICAL: Use the exact timestamp values from the input data. For example:
+- If the data shows {"timestamp": 4500, "frame": 15, ...}, use timestamp: 4500
+- DO NOT convert or recalculate timestamps
 
 Return JSON with this exact structure:
 {
   "matches": [
-    {"timestamp": 2.0, "frame": 4, "context": "Red car visible in right lane"},
-    {"timestamp": 4.0, "frame": 8, "context": "Red car turning from right lane"}
+    {"timestamp": 4500, "frame": 15, "context": "Description of what was found"},
+    {"timestamp": 4200, "frame": 14, "context": "Another match description"}
   ]
 }
 
@@ -112,10 +131,18 @@ If no matches found, return: {"matches": []}`
     const result = JSON.parse(response.choices[0].message.content || '{"matches": []}');
     console.log(`✅ Found ${result.matches?.length || 0} matches`);
 
-    // Debug: Log all matches with their timestamps
+    // Validate and fix timestamps if GPT-5 returns wrong values
     if (result.matches && result.matches.length > 0) {
-      console.log('\n📍 Detailed matches from GPT-5:');
+      console.log('\n📍 Validating matches from GPT-5:');
+
       result.matches.forEach((match: any, index: number) => {
+        // Find the actual timestamp from the original data
+        const originalFrame = formattedAnalyses.find((a: any) => a.frame === match.frame);
+        if (originalFrame && originalFrame.timestamp !== match.timestamp) {
+          console.log(`  ⚠️ Fixing timestamp for frame ${match.frame}: ${match.timestamp}s → ${originalFrame.timestamp}s`);
+          match.timestamp = originalFrame.timestamp;
+        }
+
         const minutes = Math.floor(match.timestamp / 60);
         const seconds = match.timestamp % 60;
         console.log(`  Match ${index + 1}: Timestamp ${match.timestamp}s (${minutes}:${seconds.toFixed(1)})`);
