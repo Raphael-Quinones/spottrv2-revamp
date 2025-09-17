@@ -37,6 +37,10 @@ export default function VideoSearch({
   const handleSearch = async () => {
     if (!query.trim()) return;
 
+    console.log('\n🔍 === CLIENT: Starting search ===');
+    console.log(`Query: "${query}"`);
+    console.log(`Video ID: ${videoId}`);
+
     setLoading(true);
     setError(null);
     setHasSearched(true);
@@ -56,15 +60,34 @@ export default function VideoSearch({
       }
 
       const data = await response.json();
+      console.log('\n📦 CLIENT: Received search response:');
+      console.log(`Total matches: ${data.totalMatches}`);
+      console.log(`Ranges received: ${data.ranges?.length || 0}`);
+      console.log(`Video duration: ${data.videoDuration}s`);
+      console.log(`Frame interval: ${data.frameInterval}s`);
+
+      // Log detailed range info
+      if (data.ranges && data.ranges.length > 0) {
+        console.log('\n📍 CLIENT: Detailed ranges received:');
+        data.ranges.forEach((range: SearchRange, index: number) => {
+          console.log(`  Range ${index + 1}:`);
+          console.log(`    Time: ${range.startFormatted} - ${range.endFormatted}`);
+          console.log(`    Start: ${range.start}s, End: ${range.end}s`);
+          console.log(`    Context: "${range.contexts[0]}"`);
+          console.log(`    Frames: ${range.frames.join(', ')}`);
+        });
+      }
+
       setResults(data.ranges || []);
       setTotalMatches(data.totalMatches || 0);
 
       // Update parent component with ranges for timeline highlighting
       if (onRangesUpdate) {
+        console.log('🎯 CLIENT: Updating parent with ranges for timeline highlighting');
         onRangesUpdate(data.ranges || []);
       }
     } catch (err: any) {
-      console.error('Search error:', err);
+      console.error('❌ CLIENT: Search error:', err);
       setError(err.message || 'Failed to search video');
       setResults([]);
       setTotalMatches(0);
@@ -80,6 +103,11 @@ export default function VideoSearch({
   };
 
   const handleResultClick = (timestamp: number) => {
+    console.log(`\n🎬 CLIENT: User clicked on result at timestamp ${timestamp}s`);
+    const minutes = Math.floor(timestamp / 60);
+    const seconds = timestamp % 60;
+    console.log(`  Formatted: ${minutes}:${seconds.toFixed(1)}`);
+
     if (onResultClick) {
       onResultClick(timestamp);
     }

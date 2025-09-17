@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import VideoPlayerEnhanced from '@/components/video-player-enhanced';
 import VideoSearch from '@/components/video-search';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,18 +16,34 @@ interface VideoAnalysisViewProps {
 
 export default function VideoAnalysisView({ video }: VideoAnalysisViewProps) {
   const [searchRanges, setSearchRanges] = useState<any[]>([]);
+  const [jumpToTimestamp, setJumpToTimestamp] = useState<number | null>(null);
+
+  // Convert file:// URL to streaming endpoint
+  const getVideoUrl = () => {
+    if (video.url.startsWith('file://')) {
+      return `/api/video/${video.id}/stream`;
+    }
+    return video.url;
+  };
 
   const handleResultClick = (timestamp: number) => {
+    console.log(`\n🎥 ANALYSIS VIEW: Handling result click for timestamp ${timestamp}s`);
+
     // Scroll to video player
     const videoElement = document.getElementById('video-player-section');
     if (videoElement) {
+      console.log('  Scrolling to video player...');
       videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // Jump to timestamp (handled by VideoPlayer internally)
+    // Trigger the video player to jump to this timestamp
+    console.log('  Triggering jump to timestamp in video player...');
+    setJumpToTimestamp(timestamp);
   };
 
   const handleRangesUpdate = (ranges: any[]) => {
+    console.log(`\n🎥 ANALYSIS VIEW: Updating search ranges`);
+    console.log(`  Received ${ranges.length} ranges`);
     setSearchRanges(ranges);
   };
 
@@ -41,8 +57,10 @@ export default function VideoAnalysisView({ video }: VideoAnalysisViewProps) {
           </CardHeader>
           <CardContent>
             <VideoPlayerEnhanced
-              videoUrl={video.url}
+              videoUrl={getVideoUrl()}
               searchRanges={searchRanges}
+              jumpToTimestamp={jumpToTimestamp}
+              onJumpComplete={() => setJumpToTimestamp(null)}
               className="aspect-video"
             />
             {searchRanges.length > 0 && (

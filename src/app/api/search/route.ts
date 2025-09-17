@@ -74,6 +74,9 @@ async function searchWithGPT5(analyses: any[], query: string, frameInterval: num
   console.log(`\n🔍 === AI SEARCH ===`);
   console.log(`Query: "${query}"`);
   console.log(`Analyzing ${analyses.length} frames with GPT-5 nano...`);
+  console.log(`Frame interval: ${frameInterval} seconds`);
+  console.log(`First 3 frames:`, formattedAnalyses.slice(0, 3));
+  console.log(`Last 3 frames:`, formattedAnalyses.slice(-3));
 
   try {
     const response = await openai.chat.completions.create({
@@ -109,9 +112,20 @@ If no matches found, return: {"matches": []}`
     const result = JSON.parse(response.choices[0].message.content || '{"matches": []}');
     console.log(`✅ Found ${result.matches?.length || 0} matches`);
 
+    // Debug: Log all matches with their timestamps
+    if (result.matches && result.matches.length > 0) {
+      console.log('\n📍 Detailed matches from GPT-5:');
+      result.matches.forEach((match: any, index: number) => {
+        const minutes = Math.floor(match.timestamp / 60);
+        const seconds = match.timestamp % 60;
+        console.log(`  Match ${index + 1}: Timestamp ${match.timestamp}s (${minutes}:${seconds.toFixed(1)})`);
+        console.log(`    Frame: ${match.frame}, Context: "${match.context}"`);
+      });
+    }
+
     // Log token usage
     const tokens = response.usage;
-    console.log(`📊 Tokens used: Input: ${tokens?.prompt_tokens}, Output: ${tokens?.completion_tokens}`);
+    console.log(`\n📊 Tokens used: Input: ${tokens?.prompt_tokens}, Output: ${tokens?.completion_tokens}`);
 
     return result;
   } catch (error) {
@@ -193,6 +207,14 @@ export async function POST(request: NextRequest) {
       video.frame_interval || 0.5
     );
 
+    // Debug: Log merged ranges
+    console.log('\n🔗 Merged ranges:');
+    mergedRanges.forEach((range: any, index: number) => {
+      console.log(`  Range ${index + 1}: ${range.startFormatted} - ${range.endFormatted}`);
+      console.log(`    Start: ${range.start}s, End: ${range.end}s`);
+      console.log(`    Frames included: ${range.frames.join(', ')}`);
+    });
+
     // Calculate search cost (rough estimate)
     const estimatedCost = 0.001; // Placeholder - adjust based on actual token usage
 
@@ -200,6 +222,8 @@ export async function POST(request: NextRequest) {
     console.log(`  • Query: "${query}"`);
     console.log(`  • Matches found: ${searchResults.matches?.length || 0}`);
     console.log(`  • Merged ranges: ${mergedRanges.length}`);
+    console.log(`  • Video duration: ${video.duration_seconds}s`);
+    console.log(`  • Frame interval: ${video.frame_interval}s`);
     console.log(`  • Estimated cost: $${estimatedCost.toFixed(6)}`);
 
     return NextResponse.json({

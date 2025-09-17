@@ -202,9 +202,39 @@ export default async function VideoDetailPage({
         )}
       </div>
 
+      {/* Debug Info - Remove this after testing */}
+      {isCompleted && (
+        <Card className="mb-4 border-2 border-yellow-500">
+          <CardContent className="p-4 font-mono text-xs">
+            <div>Debug Info:</div>
+            <div>- Status: {video.status}</div>
+            <div>- Has URL: {video.url ? 'Yes' : 'No'}</div>
+            <div>- Has video_analysis: {video.video_analysis ? 'Yes' : 'No'}</div>
+            <div>- Analysis count: {video.video_analysis?.length || 0}</div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Video Player with AI Search (if completed) */}
       {isCompleted && video.url && video.video_analysis && video.video_analysis.length > 0 && (
         <VideoAnalysisView video={video} />
+      )}
+
+      {/* Fallback if analysis data is missing */}
+      {isCompleted && video.url && (!video.video_analysis || video.video_analysis.length === 0) && (
+        <Card className="mb-8 border-4 border-orange-500">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-orange-500" />
+            <h3 className="text-xl font-bold uppercase mb-2">Analysis Data Not Found</h3>
+            <p className="font-mono text-sm text-muted-fg mb-4">
+              The video was processed but analysis data is missing.
+              This might happen if the processing was interrupted.
+            </p>
+            <p className="font-mono text-xs text-muted-fg">
+              You may need to reprocess this video to enable search functionality.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Simple Video Preview (if not completed) */}
@@ -218,7 +248,7 @@ export default async function VideoDetailPage({
               <video
                 controls
                 className="w-full h-full"
-                src={video.url}
+                src={video.url.startsWith('file://') ? `/api/video/${video.id}/stream` : video.url}
               >
                 Your browser does not support the video tag.
               </video>

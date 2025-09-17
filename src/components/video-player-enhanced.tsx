@@ -16,6 +16,8 @@ interface SearchRange {
 interface VideoPlayerEnhancedProps {
   videoUrl: string;
   searchRanges?: SearchRange[];
+  jumpToTimestamp?: number | null;
+  onJumpComplete?: () => void;
   onTimeUpdate?: (time: number) => void;
   className?: string;
 }
@@ -23,6 +25,8 @@ interface VideoPlayerEnhancedProps {
 export default function VideoPlayerEnhanced({
   videoUrl,
   searchRanges = [],
+  jumpToTimestamp,
+  onJumpComplete,
   onTimeUpdate,
   className = ''
 }: VideoPlayerEnhancedProps) {
@@ -66,6 +70,15 @@ export default function VideoPlayerEnhanced({
         const currentRange = searchRanges.find(
           range => video.currentTime >= range.start && video.currentTime <= range.end
         );
+
+        // Debug: Log when entering/leaving a highlight
+        if (currentRange && !activeHighlight) {
+          console.log(`🎯 VIDEO: Entered highlight range at ${video.currentTime.toFixed(1)}s`);
+          console.log(`  Range: ${currentRange.start}s - ${currentRange.end}s`);
+        } else if (!currentRange && activeHighlight) {
+          console.log(`🎯 VIDEO: Left highlight range at ${video.currentTime.toFixed(1)}s`);
+        }
+
         setActiveHighlight(currentRange || null);
 
         if (onTimeUpdate) {
@@ -145,48 +158,7 @@ export default function VideoPlayerEnhanced({
     };
   }, [isPlaying]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (!videoRef.current) return;
-
-      switch(e.key) {
-        case ' ':
-        case 'k':
-          e.preventDefault();
-          togglePlay();
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          skip(-10);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          skip(10);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          adjustVolume(0.1);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          adjustVolume(-0.1);
-          break;
-        case 'm':
-          e.preventDefault();
-          toggleMute();
-          break;
-        case 'f':
-          e.preventDefault();
-          toggleFullscreen();
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, []);
-
+  // Define callback functions before useEffect that uses them
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
 
@@ -224,6 +196,62 @@ export default function VideoPlayerEnhanced({
       setIsFullscreen(false);
     }
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!videoRef.current) return;
+
+      // Don't trigger shortcuts if user is typing in an input, textarea, or select
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.contentEditable === 'true') {
+        return;
+      }
+
+      // Don't trigger shortcuts if any modifier keys are pressed (Ctrl, Alt, Shift, Meta)
+      if (e.ctrlKey || e.altKey || e.metaKey) {
+        return;
+      }
+
+      switch(e.key) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          skip(-10);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          skip(10);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          adjustVolume(0.1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          adjustVolume(-0.1);
+          break;
+        case 'm':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [togglePlay, skip, adjustVolume, toggleMute, toggleFullscreen]);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current || !progressBarRef.current) return;
@@ -289,13 +317,46 @@ export default function VideoPlayerEnhanced({
   const jumpToTime = useCallback((timestamp: number) => {
     if (!videoRef.current) return;
 
+    console.log(`\n⏩ VIDEO: Jumping to timestamp ${timestamp}s`);
+    const minutes = Math.floor(timestamp / 60);
+    const seconds = timestamp % 60;
+    console.log(`  Formatted: ${minutes}:${seconds.toFixed(1)}`);
+    console.log(`  Video duration: ${videoRef.current.duration}s`);
+
     videoRef.current.currentTime = timestamp;
     setCurrentTime(timestamp);
 
     if (!isPlaying) {
+      console.log('  Auto-playing video...');
       videoRef.current.play();
     }
   }, [isPlaying]);
+
+  // Handle external jump to timestamp requests
+  useEffect(() => {
+    if (jumpToTimestamp !== null && jumpToTimestamp !== undefined && videoRef.current) {
+      console.log(`\n⏭️ VIDEO: Received external jump request to ${jumpToTimestamp}s`);
+
+      // Make sure video is loaded first
+      if (videoRef.current.readyState >= 2) {
+        jumpToTime(jumpToTimestamp);
+        if (onJumpComplete) {
+          onJumpComplete();
+        }
+      } else {
+        // Wait for video to be ready
+        const handleCanPlay = () => {
+          console.log('  Video ready, jumping now...');
+          jumpToTime(jumpToTimestamp);
+          if (onJumpComplete) {
+            onJumpComplete();
+          }
+          videoRef.current?.removeEventListener('canplay', handleCanPlay);
+        };
+        videoRef.current.addEventListener('canplay', handleCanPlay);
+      }
+    }
+  }, [jumpToTimestamp, onJumpComplete, jumpToTime]);
 
   const handleVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current || !volumeSliderRef.current) return;
