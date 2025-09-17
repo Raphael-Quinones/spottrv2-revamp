@@ -88,7 +88,12 @@ export function getUsageLimitByTier(tier: string): number {
 }
 
 // Format minutes to hours and minutes
-export function formatMinutes(minutes: number): string {
+export function formatMinutes(minutes: number | null | undefined): string {
+  // Handle invalid inputs
+  if (minutes === null || minutes === undefined || isNaN(minutes) || minutes < 0) {
+    return '0';
+  }
+
   if (minutes < 60) {
     return `${minutes.toFixed(1)}`;
   }

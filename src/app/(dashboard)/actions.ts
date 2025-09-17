@@ -41,6 +41,15 @@ export async function getDashboardStats() {
   currentMonth.setDate(1);
   currentMonth.setHours(0, 0, 0, 0);
 
+  // Try to create usage record if doesn't exist
+  try {
+    await supabase.rpc('get_or_create_usage_record', {
+      p_user_id: user.id
+    });
+  } catch (err) {
+    console.log('Usage record may already exist:', err);
+  }
+
   const { data: usageData } = await supabase
     .from('usage_tracking')
     .select('minutes_used, video_count')
@@ -61,11 +70,14 @@ export async function getDashboardStats() {
       break;
   }
 
+  // Ensure we return valid numbers
+  const minutesUsed = Number(usageData?.minutes_used) || 0;
+
   return {
     totalVideos: totalVideos || 0,
     processedToday: processedToday || 0,
-    minutesUsed: usageData?.minutes_used || 0,
-    minutesLimit,
+    minutesUsed: minutesUsed,
+    minutesLimit: minutesLimit,
     videoCount: usageData?.video_count || 0,
     subscriptionTier: tier,
   };
@@ -129,12 +141,27 @@ export async function getUserUsage() {
     redirect('/login');
   }
 
+  // First ensure user has a usage record for current month
+  const currentMonth = new Date();
+  currentMonth.setDate(1);
+  currentMonth.setHours(0, 0, 0, 0);
+
+  // Try to create record if doesn't exist (will do nothing if exists)
+  try {
+    await supabase.rpc('get_or_create_usage_record', {
+      p_user_id: user.id
+    });
+  } catch (err) {
+    console.log('Usage record may already exist:', err);
+  }
+
   // Call the check_usage_limit function
   const { data, error } = await supabase
     .rpc('check_usage_limit', { p_user_id: user.id });
 
   if (error) {
     console.error('Error checking usage limit:', error);
+    // Return defaults on error
     return {
       isExceeded: false,
       minutesUsed: 0,
@@ -143,11 +170,14 @@ export async function getUserUsage() {
     };
   }
 
-  return data[0] || {
-    isExceeded: false,
-    minutesUsed: 0,
-    minutesLimit: 10,
-    percentageUsed: 0,
+  // Ensure we return valid numbers
+  const result = data?.[0] || {};
+
+  return {
+    isExceeded: result.is_exceeded === true,
+    minutesUsed: Number(result.minutes_used) || 0,
+    minutesLimit: Number(result.minutes_limit) || 10,
+    percentageUsed: Number(result.percentage_used) || 0,
   };
 }
 

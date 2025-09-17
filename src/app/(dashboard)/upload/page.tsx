@@ -97,7 +97,9 @@ export default function UploadPage() {
   }
 
   const canUpload = !usage?.isExceeded;
-  const usagePercentage = usage?.percentageUsed || 0;
+  const usagePercentage = Number(usage?.percentageUsed) || 0;
+  const minutesUsed = Number(usage?.minutesUsed) || 0;
+  const minutesLimit = Number(usage?.minutesLimit) || 10;
 
   return (
     <div className="max-w-4xl">
