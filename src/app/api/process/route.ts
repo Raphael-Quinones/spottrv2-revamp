@@ -393,14 +393,12 @@ const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProg
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
 
-      // Log the full GPT-5 analysis result for every 10th frame
-      if (frameIdx % 10 === 0 || frameIdx === frames.length - 1) {
-        console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Frame ${frameIdx + 1}/${frames.length}) ===`);
-        console.log(`  📍 Frame ${frame.frameNumber} at ${formatDuration(frame.timestamp)}`);
-        console.log(`  📝 Full Response:`);
-        console.log(JSON.stringify(analysis, null, 2));
-        console.log(`  ================================\n`);
-      }
+      // Log the full GPT-5 analysis result for EVERY frame
+      console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Frame ${frameIdx + 1}/${frames.length}) ===`);
+      console.log(`  📍 Frame ${frame.frameNumber} at ${formatDuration(frame.timestamp)}`);
+      console.log(`  📝 Full OpenAI API Response:`);
+      console.log(JSON.stringify(analysis, null, 2));
+      console.log(`  ================================\n`);
 
       // Extract token usage
       const promptTokens = response.usage?.prompt_tokens || 0;
@@ -439,7 +437,27 @@ const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProg
           frame_count: 1 // Single frame
         });
 
-      // Store result
+      // Store result immediately after each frame analysis
+      const { error: insertError } = await supabase
+        .from('video_analysis')
+        .insert({
+          video_id: video.id,
+          timestamp: frame.timestamp,
+          frame_number: frame.frameNumber,
+          analysis_result: analysis,
+          tokens_used: promptTokens + completionTokens,
+          input_tokens: promptTokens,
+          output_tokens: completionTokens,
+          model_used: model
+        });
+
+      if (insertError) {
+        console.error(`❌ Error storing frame ${frameIdx} analysis:`, insertError);
+      } else {
+        console.log(`  ✅ Stored analysis for frame ${frameIdx + 1}`);
+      }
+
+      // Collect result for summary
       allResults.push({
         timestamp: frame.timestamp,
         frame_number: frame.frameNumber,
@@ -636,31 +654,9 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Analysis completed in ${analysisTime.toFixed(1)} seconds`);
     await progressUpdater(90);
 
-    // Store results
-    console.log('\n💾 === STORING RESULTS ===');
-    console.log(`Storing ${analysisResults.length} analysis results...`);
-    if (analysisResults.length > 0) {
-      const { error: insertError } = await supabase
-        .from('video_analysis')
-        .insert(
-          analysisResults.map(result => ({
-            video_id: videoId,
-            timestamp: result.timestamp,
-            frame_number: result.frame_number,
-            analysis_result: result.analysis_result,
-            tokens_used: result.tokens_used,
-            input_tokens: result.input_tokens,
-            output_tokens: result.output_tokens,
-            model_used: result.model_used
-          }))
-        );
-
-      if (insertError) {
-        console.error('❌ Error storing analysis:', insertError);
-      } else {
-        console.log(`✅ Successfully stored ${analysisResults.length} results`);
-      }
-    }
+    // Results already stored after each frame
+    console.log('\n💾 === RESULTS SUMMARY ===');
+    console.log(`✅ Processed and stored ${analysisResults.length} frame analyses`);
 
     // Update video as completed with token tracking
     const duration = await getVideoDuration(tempVideoPath);
