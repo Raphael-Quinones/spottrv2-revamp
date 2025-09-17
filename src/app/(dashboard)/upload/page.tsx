@@ -58,10 +58,10 @@ export default function UploadPage() {
         throw new Error(data.error || 'Upload failed');
       }
 
-      // Redirect to video detail page or show success
-      alert(`Video uploaded successfully! Processing will take approximately ${data.video.estimatedProcessingTime} minutes.`);
+      // Show success and redirect to video page
+      alert('Video uploaded successfully! You can start processing from the video details page.');
 
-      // Redirect to videos page
+      // Redirect to video detail page where they can trigger processing
       window.location.href = `/videos/${data.video.id}`;
 
     } catch (error: any) {

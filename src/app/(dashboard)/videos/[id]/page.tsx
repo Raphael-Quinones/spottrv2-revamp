@@ -17,6 +17,8 @@ import {
 import { getVideoById, deleteVideo } from '../../actions';
 import { formatDuration, formatFileSize, formatDate, formatRelativeTime } from '@/lib/utils';
 import Link from 'next/link';
+import ProcessButton from './ProcessButton';
+import ProcessingStatus from './ProcessingStatus';
 
 export default async function VideoDetailPage({
   params
@@ -52,50 +54,59 @@ export default async function VideoDetailPage({
         </div>
       </div>
 
+      {/* Manual Processing Trigger for Pending Videos */}
+      {isPending && (
+        <Card className="mb-8 border-4 border-yellow-500">
+          <CardContent className="p-8 text-center">
+            <Clock className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+            <h3 className="text-xl font-bold uppercase mb-2">Ready to Process</h3>
+            <p className="font-mono text-sm text-muted-fg mb-4">
+              Your video is uploaded and ready for AI analysis
+            </p>
+            <ProcessButton videoId={video.id} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Status Card */}
-      <Card className="mb-8">
-        <CardContent className="p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              {isCompleted && <CheckCircle className="w-8 h-8 text-green-500" />}
-              {isProcessing && <Activity className="w-8 h-8 text-yellow-500 animate-pulse" />}
-              {isPending && <Clock className="w-8 h-8 text-gray-500" />}
-              {isFailed && <AlertCircle className="w-8 h-8 text-red-500" />}
+      {isProcessing ? (
+        <ProcessingStatus
+          videoId={video.id}
+          initialProgress={video.progress}
+          accuracyLevel={video.accuracy_level}
+        />
+      ) : (
+        <Card className="mb-8">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                {isCompleted && <CheckCircle className="w-8 h-8 text-green-500" />}
+                {isPending && <Clock className="w-8 h-8 text-gray-500" />}
+                {isFailed && <AlertCircle className="w-8 h-8 text-red-500" />}
+
+                <div>
+                  <h3 className="text-xl font-bold uppercase">
+                    {isCompleted && 'Analysis Complete'}
+                    {isPending && 'Waiting to Process'}
+                    {isFailed && 'Processing Failed'}
+                  </h3>
+                  <p className="font-mono text-sm text-muted-fg mt-1">
+                    {isCompleted && video.video_analysis && `${video.video_analysis.length} frames analyzed`}
+                    {isPending && 'Your video is in the queue'}
+                    {isFailed && video.error_message}
+                  </p>
+                </div>
+              </div>
 
               <div>
-                <h3 className="text-xl font-bold uppercase">
-                  {isCompleted && 'Analysis Complete'}
-                  {isProcessing && 'Processing Video'}
-                  {isPending && 'Waiting to Process'}
-                  {isFailed && 'Processing Failed'}
-                </h3>
-                <p className="font-mono text-sm text-muted-fg mt-1">
-                  {isProcessing && `${video.progress}% complete`}
-                  {isCompleted && video.video_analysis && `${video.video_analysis.length} frames analyzed`}
-                  {isPending && 'Your video is in the queue'}
-                  {isFailed && video.error_message}
-                </p>
+                {isCompleted && <Badge variant="success">Completed</Badge>}
+                {isPending && <Badge variant="secondary">Pending</Badge>}
+                {isFailed && <Badge variant="destructive">Failed</Badge>}
               </div>
             </div>
-
-            <div>
-              {isCompleted && <Badge variant="success">Completed</Badge>}
-              {isProcessing && <Badge variant="warning">Processing</Badge>}
-              {isPending && <Badge variant="secondary">Pending</Badge>}
-              {isFailed && <Badge variant="destructive">Failed</Badge>}
-            </div>
-          </div>
-
-          {isProcessing && (
-            <div>
-              <Progress value={video.progress} className="h-4 border-2 border-border" />
-              <p className="font-mono text-xs text-muted-fg mt-2">
-                Processing frame by frame with {video.accuracy_level} accuracy
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Video Info Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
