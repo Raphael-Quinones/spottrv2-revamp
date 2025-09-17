@@ -24,6 +24,7 @@ import ProcessButton from './ProcessButton';
 import ProcessingStatus from './ProcessingStatus';
 import BackButton from './BackButton';
 import DeleteButton from './DeleteButton';
+import VideoAnalysisView from './VideoAnalysisView';
 
 export default async function VideoDetailPage({
   params
@@ -201,8 +202,13 @@ export default async function VideoDetailPage({
         )}
       </div>
 
-      {/* Video Preview (if available) */}
-      {video.url && (
+      {/* Video Player with AI Search (if completed) */}
+      {isCompleted && video.url && video.video_analysis && video.video_analysis.length > 0 && (
+        <VideoAnalysisView video={video} />
+      )}
+
+      {/* Simple Video Preview (if not completed) */}
+      {!isCompleted && video.url && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Video Preview</CardTitle>
@@ -221,63 +227,8 @@ export default async function VideoDetailPage({
         </Card>
       )}
 
-      {/* Analysis Results (if completed) */}
-      {isCompleted && video.video_analysis && video.video_analysis.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Analysis Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center mb-4">
-                <p className="font-mono text-sm text-muted-fg">
-                  {video.video_analysis.length} timestamps analyzed
-                </p>
-                <Button variant="outline" size="sm">
-                  <Search className="w-4 h-4 mr-2" />
-                  Search Results
-                </Button>
-              </div>
-
-              {/* Show first few analysis results */}
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {video.video_analysis.slice(0, 10).map((analysis: any, index: number) => (
-                  <div
-                    key={analysis.id}
-                    className="p-3 border-2 border-border bg-muted font-mono text-sm"
-                  >
-                    <div className="flex justify-between mb-2">
-                      <span className="font-bold">
-                        {formatDuration(analysis.timestamp)}
-                      </span>
-                      <span className="text-xs text-muted-fg">
-                        Frame #{analysis.frame_number}
-                      </span>
-                    </div>
-                    <div className="text-xs">
-                      {JSON.stringify(analysis.analysis_result).substring(0, 200)}...
-                    </div>
-                  </div>
-                ))}
-                {video.video_analysis.length > 10 && (
-                  <p className="text-center font-mono text-sm text-muted-fg py-4">
-                    + {video.video_analysis.length - 10} more results
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Actions */}
       <div className="flex gap-4 mt-8">
-        {isCompleted && (
-          <Button className="brutal-shadow">
-            <Search className="w-4 h-4 mr-2" />
-            Search Analysis
-          </Button>
-        )}
         {video.url && (
           <a href={video.url} download>
             <Button variant="secondary" className="brutal-shadow">
