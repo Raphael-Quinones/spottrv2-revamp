@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import VideoPlayer from '@/components/video-player';
+import VideoPlayerEnhanced from '@/components/video-player-enhanced';
 import VideoSearch from '@/components/video-search';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -40,7 +40,7 @@ export default function VideoAnalysisView({ video }: VideoAnalysisViewProps) {
             <CardTitle className="uppercase">Video with Search Highlights</CardTitle>
           </CardHeader>
           <CardContent>
-            <VideoPlayer
+            <VideoPlayerEnhanced
               videoUrl={video.url}
               searchRanges={searchRanges}
               className="aspect-video"
