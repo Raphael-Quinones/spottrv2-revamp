@@ -1,95 +1,80 @@
-'use client';
+import { createClient } from '@/lib/supabase/server';
+import { SidebarClient } from './SidebarClient';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  Upload, 
-  Video, 
-  Search, 
-  Settings, 
-  CreditCard,
-  Clock,
-  BarChart3
-} from 'lucide-react';
+async function getSidebarData() {
+  const supabase = await createClient();
 
-const sidebarItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/upload', label: 'Upload', icon: Upload },
-  { href: '/videos', label: 'Videos', icon: Video },
-  { href: '/settings', label: 'Settings', icon: Settings },
-  { href: '/billing', label: 'Billing', icon: CreditCard },
-];
+  // Get authenticated user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      processingVideos: [],
+      usage: {
+        minutesUsed: 0,
+        minutesLimit: 10,
+        percentageUsed: 0,
+        isExceeded: false,
+      }
+    };
+  }
 
-export function Sidebar() {
-  const pathname = usePathname();
+  // Get processing/pending videos
+  const { data: processingVideos } = await supabase
+    .from('videos')
+    .select('id, filename, status, progress')
+    .eq('user_id', user.id)
+    .in('status', ['processing', 'pending'])
+    .order('created_at', { ascending: true })
+    .limit(5);
+
+  // Get current month for usage
+  const currentMonth = new Date();
+  currentMonth.setDate(1);
+  currentMonth.setHours(0, 0, 0, 0);
+
+  // Try to create usage record if doesn't exist
+  try {
+    await supabase.rpc('get_or_create_usage_record', {
+      p_user_id: user.id
+    });
+  } catch (err) {
+    // Ignore error if record already exists
+  }
+
+  // Call the check_usage_limit function
+  const { data: usageData, error } = await supabase
+    .rpc('check_usage_limit', { p_user_id: user.id });
+
+  let usage = {
+    minutesUsed: 0,
+    minutesLimit: 10,
+    percentageUsed: 0,
+    isExceeded: false,
+  };
+
+  if (!error && usageData?.[0]) {
+    const result = usageData[0];
+    usage = {
+      minutesUsed: Number(result.minutes_used) || 0,
+      minutesLimit: Number(result.minutes_limit) || 10,
+      percentageUsed: Number(result.percentage_used) || 0,
+      isExceeded: result.is_exceeded === true,
+    };
+  }
+
+  return {
+    processingVideos: processingVideos || [],
+    usage,
+  };
+}
+
+export async function Sidebar() {
+  const { processingVideos, usage } = await getSidebarData();
 
   return (
-    <aside className="w-64 min-h-screen border-r-4 border-border bg-bg">
-      <div className="p-6">
-        <div className="mb-8">
-          <h2 className="font-bold uppercase text-sm mb-4">Navigation</h2>
-          <nav className="space-y-2">
-            {sidebarItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-3 px-4 py-3 font-mono text-sm uppercase transition-colors ${
-                    isActive 
-                      ? 'bg-fg text-bg' 
-                      : 'hover:bg-fg hover:text-bg'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Processing Queue - Mock Data */}
-        <div className="border-t-2 border-border pt-6">
-          <h2 className="font-bold uppercase text-sm mb-4 flex items-center">
-            <Clock className="w-4 h-4 mr-2" />
-            Processing Queue
-          </h2>
-          <div className="space-y-2">
-            <div className="border-2 border-border p-3">
-              <p className="font-mono text-xs uppercase">Video_001.mp4</p>
-              <div className="mt-2 h-2 bg-muted border border-border">
-                <div className="h-full bg-fg" style={{ width: '45%' }} />
-              </div>
-              <p className="font-mono text-xs mt-1">45% Complete</p>
-            </div>
-            <div className="border-2 border-border p-3">
-              <p className="font-mono text-xs uppercase">Video_002.mp4</p>
-              <p className="font-mono text-xs mt-1 text-muted-fg">Queued</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Usage Stats - Mock Data */}
-        <div className="border-t-2 border-border pt-6 mt-6">
-          <h2 className="font-bold uppercase text-sm mb-4 flex items-center">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Usage
-          </h2>
-          <div className="space-y-2">
-            <div>
-              <p className="font-mono text-xs uppercase">Minutes Used</p>
-              <p className="font-bold text-lg">7.5 / 10</p>
-              <div className="mt-1 h-2 bg-muted border border-border">
-                <div className="h-full bg-fg" style={{ width: '75%' }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </aside>
+    <SidebarClient
+      processingVideos={processingVideos}
+      usage={usage}
+    />
   );
 }

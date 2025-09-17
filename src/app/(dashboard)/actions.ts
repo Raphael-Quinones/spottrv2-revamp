@@ -205,6 +205,93 @@ export async function deleteVideo(videoId: string) {
   return { success: true };
 }
 
+export async function getBillingData() {
+  const supabase = await createClient();
+
+  // Get authenticated user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  // Get user profile with subscription info
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  // Get current month for usage
+  const currentMonth = new Date();
+  currentMonth.setDate(1);
+  currentMonth.setHours(0, 0, 0, 0);
+
+  // Get usage data
+  const { data: usage } = await supabase
+    .from('usage_tracking')
+    .select('minutes_used, video_count')
+    .eq('user_id', user.id)
+    .eq('month', currentMonth.toISOString().split('T')[0])
+    .single();
+
+  // Calculate next billing date (first of next month)
+  const nextBilling = new Date();
+  nextBilling.setMonth(nextBilling.getMonth() + 1);
+  nextBilling.setDate(1);
+
+  // Get limits based on tier
+  const tier = userProfile?.subscription_tier || 'free';
+  let minutesLimit = 10;
+  let tierName = 'Free';
+  let price = 0;
+
+  switch (tier) {
+    case 'pro':
+      minutesLimit = 100;
+      tierName = 'Pro';
+      price = 29.99;
+      break;
+    case 'enterprise':
+      minutesLimit = 999999;
+      tierName = 'Enterprise';
+      price = 99.99;
+      break;
+    case 'starter':
+      minutesLimit = 30;
+      tierName = 'Starter';
+      price = 9.99;
+      break;
+  }
+
+  // Get recent videos for billing history (as proxy for now)
+  const { data: recentVideos } = await supabase
+    .from('videos')
+    .select('id, created_at, duration_seconds, filename')
+    .eq('user_id', user.id)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  return {
+    currentPlan: {
+      tier: tier,
+      name: tierName,
+      price: price,
+      minutesUsed: Number(usage?.minutes_used) || 0,
+      minutesLimit: minutesLimit,
+      videoCount: usage?.video_count || 0,
+      nextBilling: nextBilling.toISOString().split('T')[0],
+      isActive: true,
+    },
+    user: {
+      email: userProfile?.email || user.email,
+      createdAt: userProfile?.created_at,
+      stripeCustomerId: userProfile?.stripe_customer_id,
+    },
+    recentActivity: recentVideos || [],
+  };
+}
+
 export async function getVideoById(videoId: string) {
   const supabase = await createClient();
 
