@@ -460,7 +460,13 @@ export default function VideoPlayerEnhanced({
               />
             </div>
 
-            {/* Search Range Highlights */}
+            {/* Current Progress - moved before highlights so highlights appear on top */}
+            <div
+              className="absolute top-0 left-0 h-full bg-white rounded-full"
+              style={{ width: `${progressPercentage}%` }}
+            />
+
+            {/* Search Range Highlights - now render on top of progress bar */}
             {searchRanges.map((range, index) => {
               const startPercent = (range.start / duration) * 100;
               const widthPercent = ((range.end - range.start) / duration) * 100;
@@ -468,7 +474,7 @@ export default function VideoPlayerEnhanced({
               return (
                 <div
                   key={`${range.start}-${range.end}-${index}`}
-                  className="absolute top-0 h-full bg-yellow-400 opacity-60 hover:opacity-80 transition-opacity rounded-full"
+                  className="absolute top-0 h-full bg-yellow-400 opacity-70 hover:opacity-90 transition-opacity rounded-full z-10"
                   style={{
                     left: `${startPercent}%`,
                     width: `${widthPercent}%`
@@ -481,15 +487,9 @@ export default function VideoPlayerEnhanced({
               );
             })}
 
-            {/* Current Progress */}
+            {/* Scrubber Handle - highest z-index to appear on top */}
             <div
-              className="absolute top-0 left-0 h-full bg-white rounded-full"
-              style={{ width: `${progressPercentage}%` }}
-            />
-
-            {/* Scrubber Handle */}
-            <div
-              className="absolute top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover/progress:opacity-100 transition-opacity"
+              className="absolute top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover/progress:opacity-100 transition-opacity z-20"
               style={{ left: `${progressPercentage}%` }}
             />
 
