@@ -6,18 +6,29 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { calculateImageTokens, calculateCost, getModelName, type ModelName } from '@/lib/token-utils';
 
+// Configuration flags
+const SAVE_DEBUG_GRIDS = false; // Set to true to save debug grids (not needed for analysis)
+
 // Dynamic imports to avoid build issues
 let ffmpeg: any;
-let ffmpegPath: any;
 
 const initFFmpeg = async () => {
   if (!ffmpeg) {
+    // Import fluent-ffmpeg dynamically
     ffmpeg = (await import('fluent-ffmpeg')).default;
+
+    // Try to use bundled binaries, fall back to system if not available
     try {
-      ffmpegPath = (await import('@ffmpeg-installer/ffmpeg')).default;
-      ffmpeg.setFfmpegPath(ffmpegPath.path);
+      // These requires will be evaluated at runtime, not build time
+      const ffmpegPath = eval("require('@ffmpeg-installer/ffmpeg')").path;
+      const ffprobePath = eval("require('@ffprobe-installer/ffprobe')").path;
+
+      ffmpeg.setFfmpegPath(ffmpegPath);
+      ffmpeg.setFfprobePath(ffprobePath);
+
+      console.log('Using bundled ffmpeg from npm packages');
     } catch (error) {
-      console.warn('FFmpeg installer not found, using system ffmpeg');
+      console.warn('FFmpeg installer packages not found, using system ffmpeg');
       // Will use system ffmpeg if available
     }
   }
@@ -54,11 +65,18 @@ const extractFrames = async (videoPath: string, frameInterval: number, videoId: 
   const frameCount = Math.floor(duration / frameInterval);
   const frames = [];
 
-  console.log(`Extracting ${frameCount} frames at ${frameInterval}s intervals`);
+  // Create organized directory structure
+  const framesDir = path.join('/tmp/spottr-videos', videoId, 'frames');
+  await fs.mkdir(framesDir, { recursive: true });
+
+  console.log(`  📊 Video duration: ${formatDuration(duration)}`);
+  console.log(`  🎬 Total frames to extract: ${frameCount}`);
+  console.log(`  ⏱️  Interval: every ${frameInterval}s`);
+  console.log(`  📁 Saving frames to: ${framesDir}`);
 
   for (let i = 0; i < frameCount; i++) {
     const timestamp = i * frameInterval;
-    const outputPath = `/tmp/${videoId}-frame-${i}.jpg`;
+    const outputPath = path.join(framesDir, `frame-${i}.jpg`);
 
     await new Promise<void>((resolve, reject) => {
       ffmpeg(videoPath)
@@ -67,7 +85,9 @@ const extractFrames = async (videoPath: string, frameInterval: number, videoId: 
         // No size restriction - keep original dimensions
         .output(outputPath)
         .on('end', () => {
-          console.log(`Extracted frame ${i + 1}/${frameCount}`);
+          if (i % 10 === 0 || i === frameCount - 1) {
+            console.log(`  📸 Progress: ${i + 1}/${frameCount} frames (${Math.round((i + 1) / frameCount * 100)}%)`);
+          }
           resolve();
         })
         .on('error', reject)
@@ -89,12 +109,17 @@ const createGrids = async (frames: any[], videoId: string) => {
   const FRAMES_PER_GRID = 3;  // 1x3 grid
   const grids = [];
 
+  // Create grids directory
+  const gridsDir = path.join('/tmp/spottr-videos', videoId, 'grids');
+  await fs.mkdir(gridsDir, { recursive: true });
+
   // Get dimensions from first frame
   const firstFrameMetadata = await sharp(frames[0].path).metadata();
   const FRAME_WIDTH = firstFrameMetadata.width || 640;
   const FRAME_HEIGHT = firstFrameMetadata.height || 360;
 
   console.log(`Creating grids with frame dimensions: ${FRAME_WIDTH}x${FRAME_HEIGHT}`);
+  console.log(`📁 Saving grids to: ${gridsDir}`);
 
   for (let i = 0; i < frames.length; i += FRAMES_PER_GRID) {
     const batch = frames.slice(i, Math.min(i + FRAMES_PER_GRID, frames.length));
@@ -175,8 +200,18 @@ const createGrids = async (frames: any[], videoId: string) => {
       .jpeg({ quality: 90 })  // Higher quality
       .toBuffer();
 
+    // Save grid to disk
+    const gridIndex = Math.floor(i / FRAMES_PER_GRID);
+    const gridPath = path.join(gridsDir, `grid-${gridIndex}.jpg`);
+    await fs.writeFile(gridPath, gridBuffer);
+
+    if (gridIndex % 5 === 0 || gridIndex === Math.floor((frames.length - 1) / FRAMES_PER_GRID)) {
+      console.log(`  💾 Saved grid ${gridIndex} (frames ${i}-${Math.min(i + FRAMES_PER_GRID - 1, frames.length - 1)})`);
+    }
+
     grids.push({
       buffer: gridBuffer,
+      path: gridPath,  // Add path reference
       startFrame: i,
       endFrame: Math.min(i + FRAMES_PER_GRID - 1, frames.length - 1),
       frames: batch
@@ -196,7 +231,8 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
   let totalImageTokens = 0;
   let totalCost = 0;
 
-  console.log(`Analyzing with ${model}`);
+  console.log(`  🤖 Model: ${model}`);
+  console.log(`  📦 Total grids to analyze: ${grids.length}`);
 
   for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
     const grid = grids[gridIdx];
@@ -231,6 +267,13 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
 
+      // Log the full GPT-5 analysis result
+      console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Grid ${gridIdx + 1}/${grids.length}) ===`);
+      console.log(`  📍 Frames: ${grid.frames.map((f: any) => `${f.frameNumber} (${formatDuration(f.timestamp)})`).join(', ')}`);
+      console.log(`  📝 Full Response:`);
+      console.log(JSON.stringify(analysis, null, 2));
+      console.log(`  ================================\n`);
+
       // Extract token usage
       const promptTokens = response.usage?.prompt_tokens || 0;
       const completionTokens = response.usage?.completion_tokens || 0;
@@ -245,10 +288,13 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
       totalCost += gridCost.totalCost;
 
       // Log progress
-      console.log(`Grid ${gridIdx + 1}/${grids.length}:`);
-      console.log(`  Input: ${promptTokens.toLocaleString()} tokens`);
-      console.log(`  Output: ${completionTokens.toLocaleString()} tokens`);
-      console.log(`  Cost: $${gridCost.totalCost.toFixed(6)}`);
+      if (gridIdx % 5 === 0 || gridIdx === grids.length - 1) {
+        console.log(`  💰 Grid ${gridIdx + 1}/${grids.length} (${Math.round((gridIdx + 1) / grids.length * 100)}%):`);
+        console.log(`     • Input: ${promptTokens.toLocaleString()} tokens`);
+        console.log(`     • Output: ${completionTokens.toLocaleString()} tokens`);
+        console.log(`     • Cost: $${gridCost.totalCost.toFixed(6)}`);
+        console.log(`     • Running total: $${totalCost.toFixed(4)}`);
+      }
 
       // Store cost tracking data
       await supabase
@@ -284,17 +330,142 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
       await updateProgress(progress);
 
     } catch (error: any) {
-      console.error(`Error analyzing grid ${gridIdx}:`, error.message);
+      console.error(`  ⚠️  Error analyzing grid ${gridIdx + 1}:`, error.message);
       // Continue with next grid even if one fails
     }
   }
 
   // Log final summary
-  console.log(`\n=== TOKEN USAGE SUMMARY ===`);
-  console.log(`Total Input Tokens: ${totalInputTokens.toLocaleString()}`);
-  console.log(`Total Output Tokens: ${totalOutputTokens.toLocaleString()}`);
-  console.log(`Total Cost: $${totalCost.toFixed(4)}`);
-  console.log(`Grids Processed: ${grids.length}`);
+  console.log(`\n  📊 === TOKEN USAGE SUMMARY ===`);
+  console.log(`  • Total Input Tokens: ${totalInputTokens.toLocaleString()}`);
+  console.log(`  • Total Output Tokens: ${totalOutputTokens.toLocaleString()}`);
+  console.log(`  • Total Cost: $${totalCost.toFixed(4)}`);
+  console.log(`  • Grids Processed: ${grids.length}`);
+
+  return {
+    results: allResults,
+    totals: {
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      cost: totalCost
+    }
+  };
+};
+
+// Helper: Analyze individual frames with GPT-5
+const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
+  const model = getModelName(video.accuracy_level);
+  const allResults = [];
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalCost = 0;
+
+  console.log(`  🤖 Model: ${model}`);
+  console.log(`  📦 Total frames to analyze: ${frames.length}`);
+
+  for (let frameIdx = 0; frameIdx < frames.length; frameIdx++) {
+    const frame = frames[frameIdx];
+
+    // Read frame directly from disk (no timestamp overlay needed)
+    const frameBuffer = await fs.readFile(frame.path);
+    const base64 = frameBuffer.toString('base64');
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: model,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `${video.analysis_scope}\n\nThis is frame ${frame.frameNumber} at timestamp ${formatDuration(frame.timestamp)} from a video.\n\nAnalyze what you observe in this frame. Return your analysis as a JSON object.`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${base64}`
+              }
+            }
+          ]
+        }],
+        response_format: { type: "json_object" }
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content || '{}');
+
+      // Log the full GPT-5 analysis result for every 10th frame
+      if (frameIdx % 10 === 0 || frameIdx === frames.length - 1) {
+        console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Frame ${frameIdx + 1}/${frames.length}) ===`);
+        console.log(`  📍 Frame ${frame.frameNumber} at ${formatDuration(frame.timestamp)}`);
+        console.log(`  📝 Full Response:`);
+        console.log(JSON.stringify(analysis, null, 2));
+        console.log(`  ================================\n`);
+      }
+
+      // Extract token usage
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+
+      // Track totals
+      totalInputTokens += promptTokens;
+      totalOutputTokens += completionTokens;
+
+      // Calculate cost for this frame
+      const frameCost = calculateCost(model as ModelName, promptTokens, completionTokens);
+      totalCost += frameCost.totalCost;
+
+      // Log progress and cost every 10 frames
+      if (frameIdx % 10 === 0 || frameIdx === frames.length - 1) {
+        console.log(`  💰 Frame ${frameIdx + 1}/${frames.length} (${Math.round((frameIdx + 1) / frames.length * 100)}%):`);
+        console.log(`     • Input: ${promptTokens.toLocaleString()} tokens`);
+        console.log(`     • Output: ${completionTokens.toLocaleString()} tokens`);
+        console.log(`     • Frame cost: $${frameCost.totalCost.toFixed(6)}`);
+        console.log(`     • Running total: $${totalCost.toFixed(4)}`);
+      }
+
+      // Store cost tracking
+      await supabase
+        .from('processing_costs')
+        .insert({
+          video_id: video.id,
+          model: model,
+          input_tokens: promptTokens,
+          output_tokens: completionTokens,
+          image_tokens: 0, // Will calculate separately if needed
+          input_cost_usd: frameCost.inputCost,
+          output_cost_usd: frameCost.outputCost,
+          total_cost_usd: frameCost.totalCost,
+          grid_number: frameIdx, // Using frame index instead of grid
+          frame_count: 1 // Single frame
+        });
+
+      // Store result
+      allResults.push({
+        timestamp: frame.timestamp,
+        frame_number: frame.frameNumber,
+        analysis_result: analysis,
+        tokens_used: promptTokens + completionTokens,
+        input_tokens: promptTokens,
+        output_tokens: completionTokens,
+        model_used: model
+      });
+
+      // Update progress more frequently (every 5 frames)
+      if (frameIdx % 5 === 0) {
+        await updateProgress(50 + Math.round((frameIdx / frames.length) * 40));
+      }
+    } catch (error) {
+      console.error(`❌ Error analyzing frame ${frameIdx}:`, error);
+      // Continue with next frame even if one fails
+    }
+  }
+
+  console.log('\n  📊 === ANALYSIS SUMMARY ===');
+  console.log(`  • Frames Processed: ${frames.length}`);
+  console.log(`  • Total Input Tokens: ${totalInputTokens.toLocaleString()}`);
+  console.log(`  • Total Output Tokens: ${totalOutputTokens.toLocaleString()}`);
+  console.log(`  • Total Cost: $${totalCost.toFixed(4)}`);
+  console.log(`  • Average Cost per Frame: $${(totalCost / frames.length).toFixed(6)}`);
 
   return {
     results: allResults,
@@ -351,7 +522,13 @@ const cleanupTempFiles = async (videoId: string, keepOriginal: boolean = false) 
 };
 
 export async function POST(request: NextRequest) {
+  console.log('PROCESS ENDPOINT HIT!'); // Immediate log to verify endpoint is called
+
   const { videoId } = await request.json();
+
+  console.log('\n🎬 === VIDEO PROCESSING STARTED ===' );
+  console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+  console.log(`📹 Video ID: ${videoId}`);
 
   try {
     const supabase = await createClient();
@@ -359,8 +536,10 @@ export async function POST(request: NextRequest) {
     // Get authenticated user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      console.log('❌ Processing failed: User not authenticated');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log(`👤 User ID: ${user.id}`);
 
     // Get video with user settings
     const { data: video, error: videoError } = await supabase
@@ -381,9 +560,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`Starting processing for video ${videoId}`);
-    console.log(`Settings: accuracy=${video.accuracy_level}, interval=${video.frame_interval}s`);
-    console.log(`Prompt: ${video.analysis_scope}`);
+    console.log('\n📊 === VIDEO DETAILS ===');
+    console.log(`🎯 Accuracy Level: ${video.accuracy_level}`);
+    console.log(`⏱️  Frame Interval: ${video.frame_interval}s`);
+    console.log(`📝 Analysis Scope: ${video.analysis_scope}`);
+    console.log(`🗂️  Storage Type: ${video.url.startsWith('file://') ? 'LOCAL (Dev Mode)' : 'Supabase'}`);
 
     // Update status to processing
     await supabase
@@ -424,28 +605,40 @@ export async function POST(request: NextRequest) {
     await progressUpdater(10);
 
     // Extract frames at original resolution
-    console.log('Extracting frames...');
+    console.log('\n🎞️  === FRAME EXTRACTION ===');
+    console.log('Starting frame extraction...');
     const frames = await extractFrames(
       tempVideoPath,
       video.frame_interval,
       videoId
     );
+    console.log(`✅ Extracted ${frames.length} frames successfully`);
     await progressUpdater(30);
 
-    // Create 1x3 grids with original dimensions
-    console.log('Creating frame grids...');
-    const grids = await createGrids(frames, videoId);
+    // Optional: Create grids for debugging
+    if (SAVE_DEBUG_GRIDS) {
+      console.log('\n🖼️  === DEBUG GRID CREATION ===');
+      console.log('Creating frame grids for debugging...');
+      const grids = await createGrids(frames, videoId);
+      console.log(`✅ Created ${grids.length} debug grids (1x3 layout)`);
+    }
     await progressUpdater(50);
 
-    // Analyze with GPT-5 - no token limit
-    console.log('Analyzing with GPT-5...');
-    const analysisData = await analyzeWithGPT5(grids, video, progressUpdater, supabase);
+    // Analyze individual frames with GPT-5
+    console.log('\n🤖 === AI ANALYSIS (INDIVIDUAL FRAMES) ===');
+    console.log(`Starting frame-by-frame analysis with GPT-5 (${video.accuracy_level} model)...`);
+    console.log(`Analyzing ${frames.length} individual frames...`);
+    const startTime = Date.now();
+    const analysisData = await analyzeWithGPT5SingleFrames(frames, video, progressUpdater, supabase);
     const analysisResults = analysisData.results;
     const tokenTotals = analysisData.totals;
+    const analysisTime = (Date.now() - startTime) / 1000;
+    console.log(`✅ Analysis completed in ${analysisTime.toFixed(1)} seconds`);
     await progressUpdater(90);
 
     // Store results
-    console.log('Storing analysis results...');
+    console.log('\n💾 === STORING RESULTS ===');
+    console.log(`Storing ${analysisResults.length} analysis results...`);
     if (analysisResults.length > 0) {
       const { error: insertError } = await supabase
         .from('video_analysis')
@@ -463,7 +656,9 @@ export async function POST(request: NextRequest) {
         );
 
       if (insertError) {
-        console.error('Error storing analysis:', insertError);
+        console.error('❌ Error storing analysis:', insertError);
+      } else {
+        console.log(`✅ Successfully stored ${analysisResults.length} results`);
       }
     }
 
@@ -482,10 +677,15 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', videoId);
 
-    console.log(`\n=== PROCESSING COMPLETE ===`);
-    console.log(`Video Duration: ${formatDuration(duration)}`);
-    console.log(`Processing Cost: $${tokenTotals.cost.toFixed(4)}`);
-    console.log(`Cost per minute: $${(tokenTotals.cost / (duration / 60)).toFixed(4)}`);
+    console.log('\n🏁 === PROCESSING COMPLETE ===');
+    console.log(`✅ Status: SUCCESS`);
+    console.log(`⏱️  Video Duration: ${formatDuration(duration)}`);
+    console.log(`🎞️  Frames Analyzed: ${frames.length} (individual frames)`);
+    console.log(`💰 Processing Cost: $${tokenTotals.cost.toFixed(4)}`);
+    console.log(`💵 Cost per frame: $${(tokenTotals.cost / frames.length).toFixed(6)}`);
+    console.log(`📈 Cost per minute: $${(tokenTotals.cost / (duration / 60)).toFixed(4)}`);
+    console.log(`⏰ Completed at: ${new Date().toISOString()}`);
+    console.log('================================\n');
 
     // Update usage
     await supabase.rpc('increment_usage', {
@@ -497,16 +697,18 @@ export async function POST(request: NextRequest) {
     const isLocalVideo = video.url.startsWith('file://');
     await cleanupTempFiles(videoId, isLocalVideo);
 
-    console.log(`Processing completed for video ${videoId}`);
-
     return NextResponse.json({
       success: true,
       framesAnalyzed: frames.length,
-      gridsCreated: grids.length
+      analysisMethod: 'individual_frames'
     });
 
   } catch (error: any) {
-    console.error('Processing error:', error);
+    console.error('\n❌ === PROCESSING FAILED ===');
+    console.error(`Error: ${error.message}`);
+    console.error('Stack:', error.stack);
+    console.error(`Failed at: ${new Date().toISOString()}`);
+    console.error('================================\n');
 
     const supabase = await createClient();
     await supabase

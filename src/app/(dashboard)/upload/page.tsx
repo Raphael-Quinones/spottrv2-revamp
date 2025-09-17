@@ -62,7 +62,7 @@ export default function UploadPage() {
       }
 
       // Show success and redirect to video page
-      alert('Video uploaded successfully! You can start processing from the video details page.');
+      alert('Video uploaded successfully! Redirecting to video details where you can start processing...');
 
       // Redirect to video detail page where they can trigger processing
       window.location.href = `/videos/${data.video.id}`;
@@ -279,7 +279,7 @@ export default function UploadPage() {
         onClick={handleUpload}
         disabled={!selectedFile || !prompt || !canUpload || loading}
       >
-        {loading ? 'Uploading...' : !canUpload ? 'Usage Limit Exceeded' : 'Start Processing'}
+        {loading ? 'Uploading...' : !canUpload ? 'Usage Limit Exceeded' : 'Upload Video'}
       </Button>
     </div>
   );

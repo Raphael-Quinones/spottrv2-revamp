@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// Maximum file size in bytes (500MB for dev mode, 50MB for production)
-// DEV MODE: Increased to 500MB for local storage. Revert to 50MB for production with Supabase free tier
-const MAX_FILE_SIZE = 524288000; // 500MB for local dev, should be 52428800 (50MB) for Supabase free tier
+// Maximum file size in bytes - NO LIMIT for dev mode
+// DEV MODE: No file size limit for local storage
+const MAX_FILE_SIZE = Number.MAX_SAFE_INTEGER; // No limit for local dev
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,13 +58,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file size
+    // DEV MODE: No file size limit - commented out for development
+    // Uncomment for production with appropriate limit
+    /*
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: 'File size exceeds 500MB limit' },
+        { error: 'File size exceeds limit' },
         { status: 400 }
       );
     }
+    */
 
     // Generate unique filename
     const timestamp = Date.now();
@@ -142,18 +145,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Add to processing queue
-    const { error: queueError } = await supabase
-      .from('processing_queue')
-      .insert({
-        video_id: videoRecord.id,
-        priority: accuracy === 'full' ? 1 : accuracy === 'mini' ? 2 : 3
-      });
-
-    if (queueError) {
-      console.error('Queue error:', queueError);
-      // Don't fail the upload, just log the error
-    }
+    // DEV MODE: Skip processing queue to avoid trigger that auto-sets status to 'processing'
+    // The processing_queue table isn't needed since we're manually triggering processing
+    // Comment removed as this is intentionally disabled
 
     // Estimate processing time based on file size and accuracy
     const estimatedMinutes = Math.ceil(

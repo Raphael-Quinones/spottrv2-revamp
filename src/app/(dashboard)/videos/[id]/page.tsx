@@ -23,6 +23,7 @@ import Link from 'next/link';
 import ProcessButton from './ProcessButton';
 import ProcessingStatus from './ProcessingStatus';
 import BackButton from './BackButton';
+import DeleteButton from './DeleteButton';
 
 export default async function VideoDetailPage({
   params
@@ -285,19 +286,7 @@ export default async function VideoDetailPage({
             </Button>
           </a>
         )}
-        <Button
-          variant="outline"
-          className="brutal-shadow border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
-          onClick={async () => {
-            if (confirm('Are you sure you want to delete this video?')) {
-              await deleteVideo(video.id);
-              window.location.href = '/videos';
-            }
-          }}
-        >
-          <Trash className="w-4 h-4 mr-2" />
-          Delete Video
-        </Button>
+        <DeleteButton videoId={video.id} />
       </div>
     </div>
   );
