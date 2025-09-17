@@ -22,6 +22,7 @@ import { formatCost } from '@/lib/token-utils';
 import Link from 'next/link';
 import ProcessButton from './ProcessButton';
 import ProcessingStatus from './ProcessingStatus';
+import BackButton from './BackButton';
 
 export default async function VideoDetailPage({
   params
@@ -49,11 +50,7 @@ export default async function VideoDetailPage({
           </p>
         </div>
         <div className="flex gap-3">
-          <Link href="/videos">
-            <Button variant="outline">
-              Back to Videos
-            </Button>
-          </Link>
+          <BackButton />
         </div>
       </div>
 

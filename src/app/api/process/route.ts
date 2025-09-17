@@ -328,17 +328,23 @@ const updateProgress = async (supabase: any, videoId: string, progress: number) 
 };
 
 // Helper: Clean up temp files
-const cleanupTempFiles = async (videoId: string) => {
+const cleanupTempFiles = async (videoId: string, keepOriginal: boolean = false) => {
   try {
     const tempDir = '/tmp';
     const files = await fs.readdir(tempDir);
-    const videoFiles = files.filter(f => f.includes(videoId));
+    // Only clean up frame files, not the original video if it's stored locally
+    const videoFiles = files.filter(f => {
+      if (keepOriginal && f.endsWith('.mp4') && !f.includes('frame')) {
+        return false; // Skip original video files in dev mode
+      }
+      return f.includes(videoId);
+    });
 
     for (const file of videoFiles) {
       await fs.unlink(path.join(tempDir, file)).catch(() => {});
     }
 
-    console.log(`Cleaned up ${videoFiles.length} temp files`);
+    console.log(`Cleaned up ${videoFiles.length} temp files (frames only)`);
   } catch (error) {
     console.error('Cleanup error:', error);
   }
@@ -391,11 +397,30 @@ export async function POST(request: NextRequest) {
     // Create update progress helper
     const progressUpdater = (progress: number) => updateProgress(supabase, videoId, progress);
 
-    // Download video
-    console.log('Downloading video from Supabase...');
-    const videoBuffer = await downloadFromSupabase(supabase, video.url);
-    const tempVideoPath = `/tmp/${videoId}.mp4`;
-    await fs.writeFile(tempVideoPath, videoBuffer);
+    // Download or read video
+    let videoBuffer;
+    let tempVideoPath;
+
+    // DEV MODE: Check if video is stored locally
+    if (video.url.startsWith('file://')) {
+      // Local file - just use the path directly
+      tempVideoPath = video.url.replace('file://', '');
+      console.log(`DEV MODE: Using local video at ${tempVideoPath}`);
+
+      // Verify file exists
+      try {
+        await fs.access(tempVideoPath);
+      } catch (error) {
+        console.error('Local video file not found:', tempVideoPath);
+        throw new Error('Video file not found. It may have been deleted from /tmp');
+      }
+    } else {
+      // Production mode - download from Supabase
+      console.log('Downloading video from Supabase...');
+      videoBuffer = await downloadFromSupabase(supabase, video.url);
+      tempVideoPath = `/tmp/${videoId}.mp4`;
+      await fs.writeFile(tempVideoPath, videoBuffer);
+    }
     await progressUpdater(10);
 
     // Extract frames at original resolution
@@ -468,8 +493,9 @@ export async function POST(request: NextRequest) {
       p_minutes: duration / 60
     });
 
-    // Clean up temp files
-    await cleanupTempFiles(videoId);
+    // Clean up temp files (keep original if it's stored locally)
+    const isLocalVideo = video.url.startsWith('file://');
+    await cleanupTempFiles(videoId, isLocalVideo);
 
     console.log(`Processing completed for video ${videoId}`);
 

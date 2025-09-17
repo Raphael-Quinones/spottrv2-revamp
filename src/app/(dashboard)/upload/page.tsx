@@ -32,10 +32,13 @@ export default function UploadPage() {
       return;
     }
 
+    // DEV MODE: Skip usage limit check
+    /*
     if (usage?.isExceeded) {
       alert('You have exceeded your monthly usage limit. Please upgrade your subscription.');
       return;
     }
+    */
 
     // Create form data
     const formData = new FormData();
@@ -96,7 +99,8 @@ export default function UploadPage() {
     );
   }
 
-  const canUpload = !usage?.isExceeded;
+  // DEV MODE: Allow uploads regardless of usage limits
+  const canUpload = true; // Was: !usage?.isExceeded;
   const usagePercentage = Number(usage?.percentageUsed) || 0;
   const minutesUsed = Number(usage?.minutesUsed) || 0;
   const minutesLimit = Number(usage?.minutesLimit) || 10;

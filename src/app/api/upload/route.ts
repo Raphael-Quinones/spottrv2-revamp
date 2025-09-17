@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-// Maximum file size in bytes (500MB)
-const MAX_FILE_SIZE = 524288000;
+// Maximum file size in bytes (500MB for dev mode, 50MB for production)
+// DEV MODE: Increased to 500MB for local storage. Revert to 50MB for production with Supabase free tier
+const MAX_FILE_SIZE = 524288000; // 500MB for local dev, should be 52428800 (50MB) for Supabase free tier
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +20,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check usage limits
+    // DEV MODE: Skip usage limits for development
+    // TODO: Re-enable for production
+    /*
     const { data: usageCheck } = await supabase
       .rpc('check_usage_limit', { p_user_id: user.id });
 
@@ -27,6 +32,8 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+    */
+    console.log('DEV MODE: Skipping usage limit check');
 
     // Get form data
     const formData = await request.formData();
@@ -64,11 +71,29 @@ export async function POST(request: NextRequest) {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const fileName = `${user.id}/${timestamp}_${sanitizedName}`;
 
-    // Convert File to ArrayBuffer then to Uint8Array
+    // Convert File to ArrayBuffer then to Buffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
 
-    // Upload file to Supabase storage
+    // DEV MODE: Save video locally instead of Supabase to bypass 50MB limit
+    // TODO: Revert this for production - uncomment Supabase upload code below
+
+    // Create local storage directory if it doesn't exist
+    const localStorageDir = path.join('/tmp', 'spottr-videos', user.id);
+    await fs.mkdir(localStorageDir, { recursive: true });
+
+    // Save file locally
+    const localFilename = `${timestamp}_${sanitizedName}`;
+    const localPath = path.join(localStorageDir, localFilename);
+    await fs.writeFile(localPath, buffer);
+
+    // Create a local URL (this is just for reference in the database)
+    const localUrl = `file://${localPath}`;
+
+    console.log(`DEV MODE: Video saved locally at ${localPath}`);
+    console.log(`File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+
+    /* PRODUCTION CODE - UNCOMMENT FOR SUPABASE STORAGE:
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('videos')
       .upload(fileName, buffer, {
@@ -88,6 +113,7 @@ export async function POST(request: NextRequest) {
     const { data: urlData } = supabase.storage
       .from('videos')
       .getPublicUrl(fileName);
+    */
 
     // Create video record in database
     const { data: videoRecord, error: dbError } = await supabase
@@ -95,7 +121,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         filename: file.name,
-        url: urlData.publicUrl,
+        url: localUrl, // DEV MODE: Using local file URL. For production use: urlData.publicUrl
         file_size: file.size,
         status: 'pending',
         accuracy_level: accuracy as any,
