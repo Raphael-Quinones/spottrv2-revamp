@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { calculateImageTokens, calculateCost, getModelName, type ModelName } from '@/lib/token-utils';
 
 // Dynamic imports to avoid build issues
 let ffmpeg: any;
@@ -187,15 +188,13 @@ const createGrids = async (frames: any[], videoId: string) => {
 };
 
 // Helper: Analyze with GPT-5
-const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progress: number) => Promise<void>) => {
-  const modelMap: { [key: string]: string } = {
-    'nano': 'gpt-5-nano',
-    'mini': 'gpt-5-mini',
-    'full': 'gpt-5'
-  };
-
-  const model = modelMap[video.accuracy_level];
+const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
+  const model = getModelName(video.accuracy_level);
   const allResults = [];
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalImageTokens = 0;
+  let totalCost = 0;
 
   console.log(`Analyzing with ${model}`);
 
@@ -232,13 +231,51 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
 
+      // Extract token usage
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+      const totalTokens = promptTokens + completionTokens;
+
+      // Track totals
+      totalInputTokens += promptTokens;
+      totalOutputTokens += completionTokens;
+
+      // Calculate cost for this grid
+      const gridCost = calculateCost(model as ModelName, promptTokens, completionTokens);
+      totalCost += gridCost.totalCost;
+
+      // Log progress
+      console.log(`Grid ${gridIdx + 1}/${grids.length}:`);
+      console.log(`  Input: ${promptTokens.toLocaleString()} tokens`);
+      console.log(`  Output: ${completionTokens.toLocaleString()} tokens`);
+      console.log(`  Cost: $${gridCost.totalCost.toFixed(6)}`);
+
+      // Store cost tracking data
+      await supabase
+        .from('processing_costs')
+        .insert({
+          video_id: video.id,
+          model: model,
+          input_tokens: promptTokens,
+          output_tokens: completionTokens,
+          image_tokens: 0, // Will calculate separately
+          input_cost_usd: gridCost.inputCost,
+          output_cost_usd: gridCost.outputCost,
+          total_cost_usd: gridCost.totalCost,
+          grid_number: gridIdx,
+          frame_count: grid.frames.length
+        });
+
       // Store results for each frame
       for (const frame of grid.frames) {
         allResults.push({
           timestamp: frame.timestamp,
           frame_number: frame.frameNumber,
           analysis_result: analysis[frame.frameNumber] || analysis,
-          tokens_used: response.usage?.total_tokens || 0
+          tokens_used: totalTokens, // Keep for compatibility
+          input_tokens: Math.round(promptTokens / grid.frames.length),
+          output_tokens: Math.round(completionTokens / grid.frames.length),
+          model_used: model
         });
       }
 
@@ -252,7 +289,21 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
     }
   }
 
-  return allResults;
+  // Log final summary
+  console.log(`\n=== TOKEN USAGE SUMMARY ===`);
+  console.log(`Total Input Tokens: ${totalInputTokens.toLocaleString()}`);
+  console.log(`Total Output Tokens: ${totalOutputTokens.toLocaleString()}`);
+  console.log(`Total Cost: $${totalCost.toFixed(4)}`);
+  console.log(`Grids Processed: ${grids.length}`);
+
+  return {
+    results: allResults,
+    totals: {
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      cost: totalCost
+    }
+  };
 };
 
 // Helper: Download from Supabase Storage
@@ -363,7 +414,9 @@ export async function POST(request: NextRequest) {
 
     // Analyze with GPT-5 - no token limit
     console.log('Analyzing with GPT-5...');
-    const analysisResults = await analyzeWithGPT5(grids, video, progressUpdater);
+    const analysisData = await analyzeWithGPT5(grids, video, progressUpdater, supabase);
+    const analysisResults = analysisData.results;
+    const tokenTotals = analysisData.totals;
     await progressUpdater(90);
 
     // Store results
@@ -377,7 +430,10 @@ export async function POST(request: NextRequest) {
             timestamp: result.timestamp,
             frame_number: result.frame_number,
             analysis_result: result.analysis_result,
-            tokens_used: result.tokens_used
+            tokens_used: result.tokens_used,
+            input_tokens: result.input_tokens,
+            output_tokens: result.output_tokens,
+            model_used: result.model_used
           }))
         );
 
@@ -386,7 +442,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update video as completed
+    // Update video as completed with token tracking
     const duration = await getVideoDuration(tempVideoPath);
     await supabase
       .from('videos')
@@ -394,9 +450,17 @@ export async function POST(request: NextRequest) {
         status: 'completed',
         progress: 100,
         duration_seconds: duration,
-        processed_at: new Date().toISOString()
+        processed_at: new Date().toISOString(),
+        total_input_tokens: tokenTotals.inputTokens,
+        total_output_tokens: tokenTotals.outputTokens,
+        processing_cost_usd: tokenTotals.cost
       })
       .eq('id', videoId);
+
+    console.log(`\n=== PROCESSING COMPLETE ===`);
+    console.log(`Video Duration: ${formatDuration(duration)}`);
+    console.log(`Processing Cost: $${tokenTotals.cost.toFixed(4)}`);
+    console.log(`Cost per minute: $${(tokenTotals.cost / (duration / 60)).toFixed(4)}`);
 
     // Update usage
     await supabase.rpc('increment_usage', {

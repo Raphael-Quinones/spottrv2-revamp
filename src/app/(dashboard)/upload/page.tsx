@@ -157,7 +157,13 @@ export default function UploadPage() {
       {/* Upload Area */}
       <Card className="mb-8">
         <CardContent className="p-12">
-          <div className="border-4 border-dashed border-border p-12 text-center">
+          <div
+            className="border-4 border-dashed border-border p-12 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              if (canUpload) {
+                document.getElementById('file-upload')?.click();
+              }
+            }}>
             <Upload className="w-16 h-16 mx-auto mb-4" />
             <h3 className="text-xl font-bold uppercase mb-2">Drop Video Here</h3>
             <p className="font-mono text-sm text-muted-fg mb-4">
@@ -171,18 +177,18 @@ export default function UploadPage() {
               onChange={handleFileSelect}
               disabled={!canUpload}
             />
-            <label htmlFor="file-upload">
-              <Button
-                variant="secondary"
-                className="brutal-shadow"
-                disabled={!canUpload}
-                onClick={(e) => {
-                  if (!canUpload) e.preventDefault();
-                }}
-              >
-                Select File
-              </Button>
-            </label>
+            <Button
+              variant="secondary"
+              className="brutal-shadow"
+              disabled={!canUpload}
+              onClick={() => {
+                if (canUpload) {
+                  document.getElementById('file-upload')?.click();
+                }
+              }}
+            >
+              Select File
+            </Button>
             {selectedFile && (
               <div className="mt-6 p-4 bg-muted border-2 border-border">
                 <div className="flex items-center space-x-2">

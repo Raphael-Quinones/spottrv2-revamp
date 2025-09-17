@@ -12,10 +12,13 @@ import {
   Download,
   Trash,
   Search,
-  Play
+  Play,
+  DollarSign,
+  Zap
 } from 'lucide-react';
 import { getVideoById, deleteVideo } from '../../actions';
 import { formatDuration, formatFileSize, formatDate, formatRelativeTime } from '@/lib/utils';
+import { formatCost } from '@/lib/token-utils';
 import Link from 'next/link';
 import ProcessButton from './ProcessButton';
 import ProcessingStatus from './ProcessingStatus';
@@ -109,7 +112,7 @@ export default async function VideoDetailPage({
       )}
 
       {/* Video Info Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className={`grid grid-cols-1 ${isCompleted && video.processing_cost_usd ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-6 mb-8`}>
         <Card>
           <CardHeader>
             <CardTitle className="text-sm uppercase">File Details</CardTitle>
@@ -160,6 +163,44 @@ export default async function VideoDetailPage({
             </p>
           </CardContent>
         </Card>
+
+        {/* Cost Analysis - Only show if completed and has cost data */}
+        {isCompleted && video.processing_cost_usd && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase flex items-center">
+                <DollarSign className="w-4 h-4 mr-1" />
+                Processing Cost
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Model</span>
+                <span className="uppercase">{video.accuracy_level}</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Input Tokens</span>
+                <span>{video.total_input_tokens?.toLocaleString() || '-'}</span>
+              </div>
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-muted-fg">Output Tokens</span>
+                <span>{video.total_output_tokens?.toLocaleString() || '-'}</span>
+              </div>
+              <div className="border-t pt-2">
+                <div className="flex justify-between font-mono text-sm font-bold">
+                  <span>Total Cost</span>
+                  <span>{formatCost(video.processing_cost_usd)}</span>
+                </div>
+                {video.duration_seconds && (
+                  <div className="flex justify-between font-mono text-xs text-muted-fg mt-1">
+                    <span>Per Minute</span>
+                    <span>{formatCost(video.processing_cost_usd / (video.duration_seconds / 60))}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Video Preview (if available) */}
