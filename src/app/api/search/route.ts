@@ -123,6 +123,7 @@ Instructions:
 3. Consider object types, colors, positions, actions, and context
 4. For spatial queries like "right lane" or "left side", consider positioning in the frame
 5. Be thorough - include all relevant matches
+6. IMPORTANT: Do NOT mention frame numbers in your context descriptions - only describe what was found
 
 CRITICAL: Use the exact timestamp values from the input data. For example:
 - If the data shows {"timestamp": 4500, "frame": 15, ...}, use timestamp: 4500
@@ -131,10 +132,12 @@ CRITICAL: Use the exact timestamp values from the input data. For example:
 Return JSON with this exact structure:
 {
   "matches": [
-    {"timestamp": 4500, "frame": 15, "context": "Description of what was found"},
-    {"timestamp": 4200, "frame": 14, "context": "Another match description"}
+    {"timestamp": 4500, "frame": 15, "context": "Red Toyota Camry in the right lane"},
+    {"timestamp": 4200, "frame": 14, "context": "Multiple vehicles visible on highway"}
   ]
 }
+
+Note: The "frame" field is required for internal use, but do NOT mention frame numbers in the "context" descriptions.
 
 If no matches found, return: {"matches": []}`
         }],
