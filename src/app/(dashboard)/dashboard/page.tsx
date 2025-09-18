@@ -86,17 +86,17 @@ export default async function DashboardPage() {
 
       {/* Demo Video Showcase - Show prominently for new users */}
       {demoVideo && (
-        <Card className="mb-8 border-4 border-yellow-500 brutal-shadow bg-yellow-50 dark:bg-yellow-950/10">
+        <Card className="mb-8 border-4 border-green-500 brutal-shadow bg-green-50 dark:bg-green-950/10">
           <CardContent className="p-8">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-start space-x-4">
-                <div className="p-3 bg-yellow-500 text-black">
+                <div className="p-3 bg-green-500 text-white">
                   <PlayCircle className="w-8 h-8" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-2xl font-bold uppercase">Try Demo Video</h3>
-                    <Badge variant="warning" className="bg-yellow-500 text-black">
+                    <Badge variant="success" className="bg-green-500 text-white">
                       <Sparkles className="w-3 h-3 mr-1" />
                       NO UPLOAD NEEDED
                     </Badge>
@@ -104,14 +104,10 @@ export default async function DashboardPage() {
                   <p className="font-mono text-sm text-muted-fg mb-4">
                     Experience Spottr instantly with 87 minutes of pre-analyzed NYC dashcam footage
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
                       <p className="font-mono text-xs uppercase text-muted-fg">Duration</p>
                       <p className="font-bold text-lg">{formatDuration(demoVideo.duration_seconds)}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-xs uppercase text-muted-fg">Analyzed Frames</p>
-                      <p className="font-bold text-lg">{demoVideo.analysisCount || 261}</p>
                     </div>
                     <div>
                       <p className="font-mono text-xs uppercase text-muted-fg">Ready to Search</p>
@@ -130,7 +126,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                   <Link href={`/videos/${demoVideo.id}`}>
-                    <Button size="lg" className="brutal-shadow bg-yellow-500 hover:bg-yellow-600 text-black">
+                    <Button size="lg" className="brutal-shadow bg-green-500 hover:bg-green-600 text-white">
                       <PlayCircle className="w-5 h-5 mr-2" />
                       EXPLORE DEMO VIDEO
                     </Button>
