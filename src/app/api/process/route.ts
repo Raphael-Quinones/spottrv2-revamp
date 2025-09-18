@@ -225,7 +225,7 @@ const createGrids = async (frames: any[], videoId: string) => {
 // Helper: Analyze with GPT-5
 const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
   const model = getModelName(video.accuracy_level);
-  const allResults = [];
+  const allResults: any[] = [];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalImageTokens = 0;
@@ -352,25 +352,29 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
   };
 };
 
-// Helper: Analyze individual frames with GPT-5
-const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
-  const model = getModelName(video.accuracy_level);
-  const allResults = [];
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let totalCost = 0;
+// Helper: Process single frame with retry logic
+const processOneFrame = async (frame: any, video: any, model: string, adminSupabase: any, retries = 3) => {
+  // Check if frame already processed (race condition protection)
+  const existingCheck = await adminSupabase
+    .from('video_analysis')
+    .select('id')
+    .eq('video_id', video.id)
+    .eq('frame_number', frame.frameNumber)
+    .single();
 
-  console.log(`  🤖 Model: ${model}`);
-  console.log(`  📦 Total frames to analyze: ${frames.length}`);
+  if (existingCheck.data) {
+    console.log(`  ⏭️ Frame ${frame.frameNumber} already processed, skipping`);
+    return { success: true, skipped: true };
+  }
 
-  for (let frameIdx = 0; frameIdx < frames.length; frameIdx++) {
-    const frame = frames[frameIdx];
-
-    // Read frame directly from disk (no timestamp overlay needed)
-    const frameBuffer = await fs.readFile(frame.path);
-    const base64 = frameBuffer.toString('base64');
-
+  // Retry loop for rate limit handling
+  for (let attempt = 0; attempt <= retries; attempt++) {
     try {
+      // Read frame data just-in-time to avoid memory issues
+      const frameBuffer = await fs.readFile(frame.path);
+      const base64 = frameBuffer.toString('base64');
+
+      // Call OpenAI API
       const response = await openai.chat.completions.create({
         model: model,
         messages: [{
@@ -398,56 +402,18 @@ Return your analysis as a JSON object with relevant observations about objects, 
       });
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
+      const tokens = response.usage;
 
-      // Log the full GPT-5 analysis result for EVERY frame
-      console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Frame ${frameIdx + 1}/${frames.length}) ===`);
-      console.log(`  📍 Frame ${frame.frameNumber} at ${frame.timestamp}s (${formatDuration(frame.timestamp)})`);
-      console.log(`  📝 Full OpenAI API Response:`);
-      console.log(JSON.stringify(analysis, null, 2));
-      console.log(`  ================================\n`);
+      // Calculate token costs
+      const promptTokens = tokens?.prompt_tokens || 0;
+      const completionTokens = tokens?.completion_tokens || 0;
+      const frameCost = calculateCost(
+        model as ModelName,
+        promptTokens,
+        completionTokens
+      );
 
-      // Extract token usage
-      const promptTokens = response.usage?.prompt_tokens || 0;
-      const completionTokens = response.usage?.completion_tokens || 0;
-
-      // Track totals
-      totalInputTokens += promptTokens;
-      totalOutputTokens += completionTokens;
-
-      // Calculate cost for this frame
-      const frameCost = calculateCost(model as ModelName, promptTokens, completionTokens);
-      totalCost += frameCost.totalCost;
-
-      // Log progress and cost every 10 frames
-      if (frameIdx % 10 === 0 || frameIdx === frames.length - 1) {
-        console.log(`  💰 Frame ${frameIdx + 1}/${frames.length} (${Math.round((frameIdx + 1) / frames.length * 100)}%):`);
-        console.log(`     • Input: ${promptTokens.toLocaleString()} tokens`);
-        console.log(`     • Output: ${completionTokens.toLocaleString()} tokens`);
-        console.log(`     • Frame cost: $${frameCost.totalCost.toFixed(6)}`);
-        console.log(`     • Running total: $${totalCost.toFixed(4)}`);
-      }
-
-      // Store cost tracking
-      await supabase
-        .from('processing_costs')
-        .insert({
-          video_id: video.id,
-          model: model,
-          input_tokens: promptTokens,
-          output_tokens: completionTokens,
-          image_tokens: 0, // Will calculate separately if needed
-          input_cost_usd: frameCost.inputCost,
-          output_cost_usd: frameCost.outputCost,
-          total_cost_usd: frameCost.totalCost,
-          grid_number: frameIdx, // Using frame index instead of grid
-          frame_count: 1 // Single frame
-        });
-
-      // Store result immediately after each frame analysis
-      // Using service role to bypass RLS temporarily
-      const { createClient: createAdminClient } = await import('@/lib/supabase/admin');
-      const adminSupabase = createAdminClient();
-
+      // Store in database
       const { error: insertError } = await adminSupabase
         .from('video_analysis')
         .insert({
@@ -459,49 +425,158 @@ Return your analysis as a JSON object with relevant observations about objects, 
           input_tokens: promptTokens,
           output_tokens: completionTokens,
           model_used: model
-        } as any); // Type assertion for dev - proper types would come from supabase generate
+        });
 
       if (insertError) {
-        console.error(`❌ Error storing frame ${frameIdx} analysis:`, insertError);
-      } else {
-        console.log(`  ✅ Stored analysis for frame ${frameIdx + 1}`);
+        throw new Error(`DB insert failed: ${insertError.message}`);
       }
 
-      // Collect result for summary
-      allResults.push({
-        timestamp: frame.timestamp,
-        frame_number: frame.frameNumber,
-        analysis_result: analysis,
-        tokens_used: promptTokens + completionTokens,
-        input_tokens: promptTokens,
-        output_tokens: completionTokens,
-        model_used: model
-      });
+      console.log(`  ✅ Frame ${frame.frameNumber} completed`);
 
-      // Update progress more frequently (every 5 frames)
-      if (frameIdx % 5 === 0) {
-        await updateProgress(50 + Math.round((frameIdx / frames.length) * 40));
+      return {
+        success: true,
+        tokens: {
+          input: promptTokens,
+          output: completionTokens
+        },
+        cost: frameCost.totalCost
+      };
+
+    } catch (error: any) {
+      // Handle rate limiting with exponential backoff
+      if (error.status === 429 && attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+        console.log(`  ⏳ Frame ${frame.frameNumber} rate limited, retry ${attempt + 1}/${retries} in ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
       }
-    } catch (error) {
-      console.error(`❌ Error analyzing frame ${frameIdx}:`, error);
-      // Continue with next frame even if one fails
+
+      // Final attempt failed
+      if (attempt === retries) {
+        console.error(`  ❌ Frame ${frame.frameNumber} failed after ${retries} retries: ${error.message}`);
+        return { success: false, error: error.message };
+      }
     }
   }
 
-  console.log('\n  📊 === ANALYSIS SUMMARY ===');
-  console.log(`  • Frames Processed: ${frames.length}`);
-  console.log(`  • Total Input Tokens: ${totalInputTokens.toLocaleString()}`);
-  console.log(`  • Total Output Tokens: ${totalOutputTokens.toLocaleString()}`);
-  console.log(`  • Total Cost: $${totalCost.toFixed(4)}`);
-  console.log(`  • Average Cost per Frame: $${(totalCost / frames.length).toFixed(6)}`);
+  return { success: false, error: 'Unknown error' };
+};
+
+// Helper: Analyze frames in parallel with smart concurrency control
+const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
+  const MAX_CONCURRENT = 15; // Process up to 15 frames simultaneously
+  const model = getModelName(video.accuracy_level);
+
+  console.log(`  🤖 Model: ${model}`);
+  console.log(`  📦 Total frames to analyze: ${frames.length}`);
+  console.log(`  🚀 Parallel processing with max ${MAX_CONCURRENT} concurrent requests`);
+
+  // Import admin client for bypassing RLS
+  const { createClient: createAdminClient } = await import('@/lib/supabase/admin');
+  const adminSupabase = createAdminClient();
+
+  // Check which frames are already processed
+  const existingFrames = await adminSupabase
+    .from('video_analysis')
+    .select('frame_number')
+    .eq('video_id', video.id);
+
+  const processedSet = new Set(existingFrames.data?.map((r: any) => r.frame_number) || []);
+  const framesToProcess = frames.filter(f => !processedSet.has(f.frameNumber));
+
+  console.log(`  📊 Status: ${processedSet.size} already processed, ${framesToProcess.length} to process`);
+
+  // If all frames already processed, just return totals
+  if (framesToProcess.length === 0) {
+    console.log(`  ✅ All frames already processed!`);
+    return {
+      results: [],
+      totals: { inputTokens: 0, outputTokens: 0, cost: 0 }
+    };
+  }
+
+  // Initialize totals for cost tracking
+  const totals = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cost: 0
+  };
+
+  const allResults: any[] = [];
+  let processedCount = processedSet.size;
+
+  // Process frames in chunks to control concurrency
+  for (let i = 0; i < framesToProcess.length; i += MAX_CONCURRENT) {
+    const chunk = framesToProcess.slice(i, i + MAX_CONCURRENT);
+    const chunkStartTime = Date.now();
+
+    console.log(`\n  📦 Processing chunk ${Math.floor(i / MAX_CONCURRENT) + 1}/${Math.ceil(framesToProcess.length / MAX_CONCURRENT)} (${chunk.length} frames)`);
+
+    // Process chunk in parallel
+    const chunkResults = await Promise.allSettled(
+      chunk.map(frame => processOneFrame(frame, video, model, adminSupabase))
+    );
+
+    // Process results and accumulate totals
+    let chunkSuccesses = 0;
+    let chunkFailures = 0;
+    let chunkSkipped = 0;
+
+    chunkResults.forEach((result, idx) => {
+      if (result.status === 'fulfilled' && result.value) {
+        if (result.value.success) {
+          if (result.value.skipped) {
+            chunkSkipped++;
+          } else {
+            chunkSuccesses++;
+            allResults.push({ frame: chunk[idx].frameNumber, success: true });
+
+            // Accumulate token counts and costs
+            if (result.value.tokens) {
+              totals.inputTokens += result.value.tokens.input || 0;
+              totals.outputTokens += result.value.tokens.output || 0;
+            }
+            if (result.value.cost) {
+              totals.cost += result.value.cost;
+            }
+          }
+        } else {
+          chunkFailures++;
+          console.log(`    ⚠️ Frame ${chunk[idx].frameNumber} failed: ${result.value.error}`);
+        }
+      } else if (result.status === 'rejected') {
+        chunkFailures++;
+        console.log(`    ⚠️ Frame ${chunk[idx].frameNumber} rejected: ${result.reason}`);
+      }
+    });
+
+    processedCount += chunkSuccesses;
+
+    const chunkTime = (Date.now() - chunkStartTime) / 1000;
+    console.log(`  ✅ Chunk complete in ${chunkTime.toFixed(1)}s: ${chunkSuccesses} succeeded, ${chunkSkipped} skipped, ${chunkFailures} failed`);
+
+    // Update progress
+    const progress = Math.round((processedCount / frames.length) * 100);
+    await updateProgress(Math.min(progress, 99));
+
+    // Log running totals
+    if (totals.cost > 0) {
+      console.log(`  💰 Running totals: ${totals.inputTokens.toLocaleString()} input, ${totals.outputTokens.toLocaleString()} output tokens, $${totals.cost.toFixed(4)}`);
+    }
+
+    // Small delay between chunks to avoid overwhelming the API
+    if (i + MAX_CONCURRENT < framesToProcess.length) {
+      console.log(`  ⏸️ Brief pause before next chunk...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  console.log(`\n  🎉 Parallel processing complete!`);
+  console.log(`  📊 Final results: ${allResults.length} frames processed successfully`);
 
   return {
     results: allResults,
-    totals: {
-      inputTokens: totalInputTokens,
-      outputTokens: totalOutputTokens,
-      cost: totalCost
-    }
+    totals: totals
   };
 };
 
