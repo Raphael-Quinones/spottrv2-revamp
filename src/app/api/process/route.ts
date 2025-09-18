@@ -464,7 +464,7 @@ Return your analysis as a JSON object with relevant observations about objects, 
 
 // Helper: Analyze frames in parallel with smart concurrency control
 const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
-  const MAX_CONCURRENT = 15; // Process up to 15 frames simultaneously
+  const MAX_CONCURRENT = 50; // Process up to 50 frames simultaneously
   const model = getModelName(video.accuracy_level);
 
   console.log(`  🤖 Model: ${model}`);
