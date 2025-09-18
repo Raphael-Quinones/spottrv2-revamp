@@ -56,15 +56,16 @@ export async function getDashboardStats() {
     .eq('month', currentMonth.toISOString().split('T')[0])
     .single();
 
+  // Get subscription tier to determine default credits
+  const tier = userProfile?.subscription_tier || 'free';
+  const defaultCredits = tier === 'free' ? 1000 : tier === 'pro' ? 40000 : 100000;
+
   // Calculate credits used from purchased - balance
-  const creditsPurchased = usageData?.credits_purchased || 40000; // Default to pro tier allocation
+  const creditsPurchased = usageData?.credits_purchased || defaultCredits;
   const creditsUsed = creditsPurchased - creditsBalance;
 
   // Calculate value metrics
   const valueMetrics = calculateValueMetrics(creditsBalance);
-
-  // Get subscription tier (only 'pro' now, no free tier)
-  const tier = userProfile?.subscription_tier || 'pro';
 
   return {
     totalVideos: totalVideos || 0,
@@ -161,7 +162,16 @@ export async function getUserUsage() {
     .eq('month', currentMonth.toISOString().split('T')[0])
     .single();
 
-  const creditsPurchased = usageData?.credits_purchased || 40000;
+  // Get user's tier to determine default credits
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('subscription_tier')
+    .eq('id', user.id)
+    .single();
+
+  const tier = userProfile?.subscription_tier || 'free';
+  const defaultCredits = tier === 'free' ? 1000 : tier === 'pro' ? 40000 : 100000;
+  const creditsPurchased = usageData?.credits_purchased || defaultCredits;
   const creditsUsed = creditsPurchased - creditsBalance;
   const percentageUsed = creditsPurchased > 0 ? (creditsUsed / creditsPurchased) * 100 : 0;
 
@@ -254,9 +264,10 @@ export async function getBillingData() {
   nextBilling.setMonth(nextBilling.getMonth() + 1);
   nextBilling.setDate(1);
 
-  // Only pro tier now (no free tier)
-  const tier = userProfile?.subscription_tier || 'pro';
-  const creditsPurchased = usage?.credits_purchased || 40000;
+  // Get tier and determine default credits
+  const tier = userProfile?.subscription_tier || 'free';
+  const defaultCredits = tier === 'free' ? 1000 : tier === 'pro' ? 40000 : 100000;
+  const creditsPurchased = usage?.credits_purchased || defaultCredits;
   const creditsUsed = creditsPurchased - creditsBalance;
 
   // Get recent credit transactions
@@ -270,11 +281,18 @@ export async function getBillingData() {
   // Calculate value metrics
   const valueMetrics = calculateValueMetrics(creditsBalance);
 
+  // Get plan details based on tier
+  const planDetails = tier === 'free'
+    ? { name: 'Free', price: 0 }
+    : tier === 'pro'
+    ? { name: 'Pro', price: 29.00 }
+    : { name: 'Enterprise', price: 99.00 };
+
   return {
     currentPlan: {
-      tier: 'pro',
-      name: 'Pro',
-      price: 29.00,
+      tier: tier,
+      name: planDetails.name,
+      price: planDetails.price,
       creditsBalance: creditsBalance,
       creditsUsed: creditsUsed,
       creditsPurchased: creditsPurchased,

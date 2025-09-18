@@ -15,8 +15,10 @@ const CUSTOMER_PRICING = {
 // 1 credit = $0.001 (0.1 penny)
 const CREDIT_VALUE = 0.001;
 
-// Fixed monthly allocation for pro tier
-const PRO_TIER_CREDITS = 40000;
+// Fixed monthly allocation by tier
+const FREE_TIER_CREDITS = 1000;  // ~1 hour of video or ~30 searches
+const PRO_TIER_CREDITS = 40000;  // ~40 hours of video or ~1,300 searches
+const ENTERPRISE_TIER_CREDITS = 100000; // ~100 hours of video or ~3,300 searches
 
 /**
  * Calculate credits from token usage with exact 10x markup
@@ -115,13 +117,20 @@ Total: ${totalCredits} credits ($${(totalCredits * CREDIT_VALUE).toFixed(2)})`;
 
 /**
  * Get credits for subscription tier
- * Only 'pro' tier exists now (no free tier)
  * @param tier Subscription tier
  * @returns Number of credits allocated monthly
  */
-export function getTierCredits(tier: 'pro'): number {
-  // Only pro tier exists, gets 40,000 credits
-  return PRO_TIER_CREDITS;
+export function getTierCredits(tier: 'free' | 'pro' | 'enterprise'): number {
+  switch (tier) {
+    case 'free':
+      return FREE_TIER_CREDITS;
+    case 'pro':
+      return PRO_TIER_CREDITS;
+    case 'enterprise':
+      return ENTERPRISE_TIER_CREDITS;
+    default:
+      return 0;
+  }
 }
 
 /**
@@ -211,5 +220,7 @@ export const CREDIT_CONSTANTS = {
   BASE_COSTS,
   CUSTOMER_PRICING,
   MARKUP_FACTOR: 10,
-  PRO_TIER_CREDITS
+  FREE_TIER_CREDITS,
+  PRO_TIER_CREDITS,
+  ENTERPRISE_TIER_CREDITS
 } as const;
