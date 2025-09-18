@@ -269,7 +269,7 @@ const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progre
 
       // Log the full GPT-5 analysis result
       console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Grid ${gridIdx + 1}/${grids.length}) ===`);
-      console.log(`  📍 Frames: ${grid.frames.map((f: any) => `${f.frameNumber} (${formatDuration(f.timestamp)})`).join(', ')}`);
+      console.log(`  📍 Frames: ${grid.frames.map((f: any) => `${f.frameNumber} at ${f.timestamp}s`).join(', ')}`);
       console.log(`  📝 Full Response:`);
       console.log(JSON.stringify(analysis, null, 2));
       console.log(`  ================================\n`);
@@ -378,7 +378,13 @@ const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProg
           content: [
             {
               type: 'text',
-              text: `${video.analysis_scope}\n\nThis is frame ${frame.frameNumber} at timestamp ${formatDuration(frame.timestamp)} from a video.\n\nAnalyze what you observe in this frame. Return your analysis as a JSON object.`
+              text: `${video.analysis_scope}
+
+This is frame ${frame.frameNumber} at ${frame.timestamp} seconds in the video.
+
+Analyze what you observe in this frame. Focus only on the visual content - do not include frame numbers or timestamps in your response.
+
+Return your analysis as a JSON object with relevant observations about objects, people, vehicles, text, and scene context.`
             },
             {
               type: 'image_url',
@@ -395,7 +401,7 @@ const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProg
 
       // Log the full GPT-5 analysis result for EVERY frame
       console.log(`\n  🤖 === GPT-5 ANALYSIS RESULT (Frame ${frameIdx + 1}/${frames.length}) ===`);
-      console.log(`  📍 Frame ${frame.frameNumber} at ${formatDuration(frame.timestamp)}`);
+      console.log(`  📍 Frame ${frame.frameNumber} at ${frame.timestamp}s (${formatDuration(frame.timestamp)})`);
       console.log(`  📝 Full OpenAI API Response:`);
       console.log(JSON.stringify(analysis, null, 2));
       console.log(`  ================================\n`);
