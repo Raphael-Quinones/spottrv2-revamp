@@ -44,9 +44,14 @@ export default async function VideoDetailPage({
     <div className="max-w-6xl mx-auto">
       <div className="mb-8 flex justify-between items-start">
         <div>
-          <h1 className="text-4xl font-bold uppercase mb-2">{video.filename}</h1>
+          <div className="flex items-center gap-4 mb-2">
+            <h1 className="text-4xl font-bold uppercase">{video.filename}</h1>
+            {video.is_demo && (
+              <Badge variant="warning" className="bg-yellow-500 text-black">DEMO</Badge>
+            )}
+          </div>
           <p className="font-mono text-sm text-muted-fg">
-            Uploaded {formatRelativeTime(video.created_at)}
+            {video.is_demo ? 'Demo video available to all users' : `Uploaded ${formatRelativeTime(video.created_at)}`}
           </p>
         </div>
         <div className="flex gap-3">

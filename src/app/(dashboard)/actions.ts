@@ -93,10 +93,12 @@ export async function getRecentVideos(limit = 5) {
   }
 
   // Get recent videos with all necessary data
+  // Include both user's videos and demo videos
   const { data: videos, error } = await supabase
     .from('videos')
     .select('*')
-    .eq('user_id', user.id)
+    .or(`user_id.eq.${user.id},is_demo.eq.true`)
+    .order('is_demo', { ascending: false }) // Show demo videos first
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -302,6 +304,7 @@ export async function getVideoById(videoId: string) {
   }
 
   // Get video with analysis data
+  // Allow access if user owns it OR it's a demo video
   const { data: video, error } = await supabase
     .from('videos')
     .select(`
@@ -315,7 +318,7 @@ export async function getVideoById(videoId: string) {
       )
     `)
     .eq('id', videoId)
-    .eq('user_id', user.id)
+    .or(`user_id.eq.${user.id},is_demo.eq.true`)
     .single();
 
   if (error) {

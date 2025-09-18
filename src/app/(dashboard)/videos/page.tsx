@@ -59,24 +59,29 @@ export default async function VideosPage() {
           </div>
         ) : (
           videos.map((video: any) => (
-            <Card key={video.id} className="brutal-shadow hover:shadow-brutal-lg transition-shadow">
+            <Card key={video.id} className={`brutal-shadow hover:shadow-brutal-lg transition-shadow ${video.is_demo ? 'border-yellow-500 border-2' : ''}`}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <FileVideo className="w-8 h-8" />
-                  {video.status === 'completed' && (
-                    <Badge variant="success">Completed</Badge>
-                  )}
-                  {video.status === 'processing' && (
-                    <Badge variant="warning">
-                      Processing {video.progress > 0 && `${video.progress}%`}
-                    </Badge>
-                  )}
-                  {video.status === 'pending' && (
-                    <Badge variant="secondary">Pending</Badge>
-                  )}
-                  {video.status === 'failed' && (
-                    <Badge variant="destructive">Failed</Badge>
-                  )}
+                  <div className="flex gap-2">
+                    {video.is_demo && (
+                      <Badge variant="warning" className="bg-yellow-500 text-black">DEMO</Badge>
+                    )}
+                    {video.status === 'completed' && (
+                      <Badge variant="success">Completed</Badge>
+                    )}
+                    {video.status === 'processing' && (
+                      <Badge variant="warning">
+                        Processing {video.progress > 0 && `${video.progress}%`}
+                      </Badge>
+                    )}
+                    {video.status === 'pending' && (
+                      <Badge variant="secondary">Pending</Badge>
+                    )}
+                    {video.status === 'failed' && (
+                      <Badge variant="destructive">Failed</Badge>
+                    )}
+                  </div>
                 </div>
 
                 <h3 className="font-bold text-lg mb-2 truncate" title={video.filename}>
