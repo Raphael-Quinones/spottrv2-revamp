@@ -76,7 +76,7 @@ function mergeTimestampRanges(matches: any[], frameInterval: number) {
   return ranges;
 }
 
-// Search with GPT-5 nano
+// Search with GPT-5 nano using chunked processing
 async function searchWithGPT5(analyses: any[], query: string, frameInterval: number) {
   // Format analyses for GPT-5
   const formattedAnalyses = analyses.map(a => ({
@@ -89,18 +89,31 @@ async function searchWithGPT5(analyses: any[], query: string, frameInterval: num
   console.log(`Query: "${query}"`);
   console.log(`Analyzing ${analyses.length} frames with GPT-5 nano...`);
   console.log(`Frame interval: ${frameInterval} seconds`);
-  console.log(`First 3 frames:`, formattedAnalyses.slice(0, 3));
-  console.log(`Last 3 frames:`, formattedAnalyses.slice(-3));
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-5-nano', // Maximum context window
-      messages: [{
-        role: 'user',
-        content: `You are analyzing video frame data to find specific moments.
+  // Split into chunks of 40 frames to avoid token limits
+  const CHUNK_SIZE = 40;
+  const chunks: any[][] = [];
 
-Video Analysis Data:
-${JSON.stringify(formattedAnalyses, null, 2)}
+  for (let i = 0; i < formattedAnalyses.length; i += CHUNK_SIZE) {
+    chunks.push(formattedAnalyses.slice(i, i + CHUNK_SIZE));
+  }
+
+  console.log(`📦 Split into ${chunks.length} chunks of up to ${CHUNK_SIZE} frames each`);
+
+  // Process chunks in parallel
+  const searchChunk = async (chunk: any[], chunkIndex: number) => {
+    console.log(`  🔍 Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} frames)`);
+    console.log(`     Time range: ${formatTime(chunk[0].timestamp)} - ${formatTime(chunk[chunk.length - 1].timestamp)}`);
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-5-nano',
+        messages: [{
+          role: 'user',
+          content: `You are analyzing video frame data to find specific moments.
+
+Video Analysis Data (Chunk ${chunkIndex + 1}/${chunks.length}):
+${JSON.stringify(chunk, null, 2)}
 
 User Query: "${query}"
 
@@ -124,25 +137,51 @@ Return JSON with this exact structure:
 }
 
 If no matches found, return: {"matches": []}`
-      }],
-      response_format: { type: "json_object" }
-    });
+        }],
+        response_format: { type: "json_object" }
+      });
 
-    const result = JSON.parse(response.choices[0].message.content || '{"matches": []}');
-    console.log(`✅ Found ${result.matches?.length || 0} matches`);
+      const result = JSON.parse(response.choices[0].message.content || '{"matches": []}');
 
-    // Validate and fix timestamps if GPT-5 returns wrong values
-    if (result.matches && result.matches.length > 0) {
-      console.log('\n📍 Validating matches from GPT-5:');
+      // Validate and fix timestamps
+      if (result.matches && result.matches.length > 0) {
+        result.matches.forEach((match: any) => {
+          const originalFrame = chunk.find((a: any) => a.frame === match.frame);
+          if (originalFrame && originalFrame.timestamp !== match.timestamp) {
+            console.log(`     ⚠️ Fixing timestamp for frame ${match.frame}: ${match.timestamp}s → ${originalFrame.timestamp}s`);
+            match.timestamp = originalFrame.timestamp;
+          }
+        });
+      }
 
-      result.matches.forEach((match: any, index: number) => {
-        // Find the actual timestamp from the original data
-        const originalFrame = formattedAnalyses.find((a: any) => a.frame === match.frame);
-        if (originalFrame && originalFrame.timestamp !== match.timestamp) {
-          console.log(`  ⚠️ Fixing timestamp for frame ${match.frame}: ${match.timestamp}s → ${originalFrame.timestamp}s`);
-          match.timestamp = originalFrame.timestamp;
-        }
+      console.log(`     ✅ Chunk ${chunkIndex + 1}: Found ${result.matches?.length || 0} matches`);
 
+      // Log token usage
+      const tokens = response.usage;
+      console.log(`     📊 Tokens: Input: ${tokens?.prompt_tokens}, Output: ${tokens?.completion_tokens}`);
+
+      return result.matches || [];
+    } catch (error) {
+      console.error(`     ❌ Error in chunk ${chunkIndex + 1}:`, error);
+      return [];
+    }
+  };
+
+  try {
+    // Process all chunks in parallel
+    console.log('\n🚀 Processing chunks in parallel...');
+    const chunkResults = await Promise.all(
+      chunks.map((chunk, index) => searchChunk(chunk, index))
+    );
+
+    // Combine all matches from all chunks
+    const allMatches = chunkResults.flat();
+
+    console.log(`\n✅ Search complete! Total matches found: ${allMatches.length}`);
+
+    if (allMatches.length > 0) {
+      console.log('\n📍 All matches:');
+      allMatches.forEach((match: any, index: number) => {
         const minutes = Math.floor(match.timestamp / 60);
         const seconds = match.timestamp % 60;
         console.log(`  Match ${index + 1}: Timestamp ${match.timestamp}s (${minutes}:${seconds.toFixed(1)})`);
@@ -150,11 +189,7 @@ If no matches found, return: {"matches": []}`
       });
     }
 
-    // Log token usage
-    const tokens = response.usage;
-    console.log(`\n📊 Tokens used: Input: ${tokens?.prompt_tokens}, Output: ${tokens?.completion_tokens}`);
-
-    return result;
+    return { matches: allMatches };
   } catch (error) {
     console.error('❌ Search error:', error);
     throw error;
