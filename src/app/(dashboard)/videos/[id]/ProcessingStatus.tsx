@@ -65,7 +65,7 @@ export default function ProcessingStatus({
         <div>
           <Progress value={progress} className="h-4 border-2 border-border" />
           <p className="font-mono text-xs text-muted-fg mt-2">
-            Processing frame by frame with {accuracyLevel} accuracy
+            Analyzing frames every 10 seconds with GPT-5 Nano
           </p>
         </div>
       </CardContent>

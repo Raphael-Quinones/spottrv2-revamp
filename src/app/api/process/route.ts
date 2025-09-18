@@ -224,14 +224,15 @@ const createGrids = async (frames: any[], videoId: string) => {
 
 // Helper: Analyze with GPT-5
 const analyzeWithGPT5 = async (grids: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
-  const model = getModelName(video.accuracy_level);
+  // Always use nano model now
+  const model = 'gpt-5-nano';
   const allResults: any[] = [];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalImageTokens = 0;
   let totalCost = 0;
 
-  console.log(`  🤖 Model: ${model}`);
+  console.log(`  🤖 Model: ${model} (fixed)`);
   console.log(`  📦 Total grids to analyze: ${grids.length}`);
 
   for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
@@ -465,9 +466,10 @@ Return your analysis as a JSON object with relevant observations about objects, 
 // Helper: Analyze frames in parallel with smart concurrency control
 const analyzeWithGPT5SingleFrames = async (frames: any[], video: any, updateProgress: (progress: number) => Promise<void>, supabase: any) => {
   const MAX_CONCURRENT = 50; // Process up to 50 frames simultaneously
-  const model = getModelName(video.accuracy_level);
+  // Always use nano model now
+  const model = 'gpt-5-nano';
 
-  console.log(`  🤖 Model: ${model}`);
+  console.log(`  🤖 Model: ${model} (fixed)`);
   console.log(`  📦 Total frames to analyze: ${frames.length}`);
   console.log(`  🚀 Parallel processing with max ${MAX_CONCURRENT} concurrent requests`);
 

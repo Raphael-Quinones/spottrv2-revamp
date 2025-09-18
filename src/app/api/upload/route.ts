@@ -39,10 +39,12 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('video') as File;
     const prompt = formData.get('prompt') as string;
-    const accuracy = formData.get('accuracy') as string;
-    const frameInterval = parseFloat(formData.get('frameInterval') as string);
 
-    if (!file || !prompt || !accuracy) {
+    // Fixed values - no longer read from form
+    const accuracy = 'nano';
+    const frameInterval = 10; // 10 seconds
+
+    if (!file || !prompt) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -149,11 +151,9 @@ export async function POST(request: NextRequest) {
     // The processing_queue table isn't needed since we're manually triggering processing
     // Comment removed as this is intentionally disabled
 
-    // Estimate processing time based on file size and accuracy
+    // Estimate processing time based on file size
     const estimatedMinutes = Math.ceil(
-      (file.size / 1024 / 1024) * // Size in MB
-      (accuracy === 'full' ? 0.5 : accuracy === 'mini' ? 0.3 : 0.2) * // Accuracy multiplier
-      (0.5 / frameInterval) // Frame interval multiplier
+      (file.size / 1024 / 1024) * 0.2 * (0.5 / frameInterval) // Using nano model fixed values
     );
 
     // Increment usage tracking (estimate based on file size)

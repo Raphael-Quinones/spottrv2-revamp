@@ -12,10 +12,12 @@ import { formatMinutes } from '@/lib/utils';
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [prompt, setPrompt] = useState('');
-  const [accuracy, setAccuracy] = useState('nano');
-  const [frameInterval, setFrameInterval] = useState('0.5');
   const [usage, setUsage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Fixed values - no longer user configurable
+  const accuracy = 'nano';
+  const frameInterval = '10';
 
   useEffect(() => {
     // Fetch usage data
@@ -44,8 +46,8 @@ export default function UploadPage() {
     const formData = new FormData();
     formData.append('video', selectedFile);
     formData.append('prompt', prompt);
-    formData.append('accuracy', accuracy);
-    formData.append('frameInterval', frameInterval);
+    formData.append('accuracy', 'nano');
+    formData.append('frameInterval', '10');
 
     try {
       setLoading(true);
@@ -216,10 +218,10 @@ export default function UploadPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Settings2 className="w-5 h-5 mr-2" />
-            Analysis Settings
+            Analysis Instructions
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent>
           <div>
             <Label htmlFor="prompt">What should we analyze?</Label>
             <textarea
@@ -232,43 +234,8 @@ export default function UploadPage() {
               disabled={!canUpload}
             />
             <p className="font-mono text-xs text-muted-fg mt-2">
-              Be specific about what you want to find in the video
+              Be specific about what you want to find in the video. We'll analyze frames every 10 seconds using GPT-5 Nano.
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="accuracy">Accuracy Level</Label>
-              <select
-                id="accuracy"
-                className="w-full mt-2 p-3 border-4 border-border font-mono text-sm bg-bg"
-                value={accuracy}
-                onChange={(e) => setAccuracy(e.target.value)}
-                disabled={!canUpload}
-              >
-                <option value="nano">GPT-5 Nano (Fast)</option>
-                <option value="mini">GPT-5 Mini (Balanced)</option>
-                <option value="full">GPT-5 (Most Accurate)</option>
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="interval">Frame Interval (seconds)</Label>
-              <Input
-                id="interval"
-                type="number"
-                min="0.1"
-                max="5"
-                step="0.1"
-                value={frameInterval}
-                onChange={(e) => setFrameInterval(e.target.value)}
-                className="mt-2 border-4"
-                disabled={!canUpload}
-              />
-              <p className="font-mono text-xs text-muted-fg mt-2">
-                Lower = more accurate, higher cost
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>
