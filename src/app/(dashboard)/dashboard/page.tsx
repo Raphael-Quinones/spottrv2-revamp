@@ -1,16 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, Clock, CheckCircle, Upload, Search, AlertCircle } from 'lucide-react';
+import { Video, Clock, CheckCircle, Upload, Search, AlertCircle, PlayCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { getDashboardStats, getRecentVideos } from '../actions';
+import { getDashboardStats, getRecentVideos, getDemoVideo } from '../actions';
 import { formatDuration, formatRelativeTime, formatMinutes } from '@/lib/utils';
 
 export default async function DashboardPage() {
   // Fetch real data from database
-  const [stats, recentVideos] = await Promise.all([
+  const [stats, recentVideos, demoVideo] = await Promise.all([
     getDashboardStats(),
     getRecentVideos(5),
+    getDemoVideo(),
   ]);
 
   const usagePercentage = stats.minutesLimit > 0
@@ -82,6 +83,64 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Demo Video Showcase - Show prominently for new users */}
+      {demoVideo && (
+        <Card className="mb-8 border-4 border-yellow-500 brutal-shadow bg-yellow-50 dark:bg-yellow-950/10">
+          <CardContent className="p-8">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start space-x-4">
+                <div className="p-3 bg-yellow-500 text-black">
+                  <PlayCircle className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-2xl font-bold uppercase">Try Demo Video</h3>
+                    <Badge variant="warning" className="bg-yellow-500 text-black">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      NO UPLOAD NEEDED
+                    </Badge>
+                  </div>
+                  <p className="font-mono text-sm text-muted-fg mb-4">
+                    Experience Spottr instantly with 87 minutes of pre-analyzed NYC dashcam footage
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                      <p className="font-mono text-xs uppercase text-muted-fg">Duration</p>
+                      <p className="font-bold text-lg">{formatDuration(demoVideo.duration_seconds)}</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs uppercase text-muted-fg">Analyzed Frames</p>
+                      <p className="font-bold text-lg">{demoVideo.analysisCount || 261}</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs uppercase text-muted-fg">Ready to Search</p>
+                      <p className="font-bold text-lg">100%</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-bg border-2 border-border mb-6">
+                    <p className="font-mono text-xs uppercase text-muted-fg mb-2">Try searching for:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-2 py-1 border border-border font-mono text-xs">Toyota</span>
+                      <span className="px-2 py-1 border border-border font-mono text-xs">Yellow Taxi</span>
+                      <span className="px-2 py-1 border border-border font-mono text-xs">Pedestrians</span>
+                      <span className="px-2 py-1 border border-border font-mono text-xs">Traffic Lights</span>
+                      <span className="px-2 py-1 border border-border font-mono text-xs">Street Signs</span>
+                      <span className="px-2 py-1 border border-border font-mono text-xs">Buses</span>
+                    </div>
+                  </div>
+                  <Link href={`/videos/${demoVideo.id}`}>
+                    <Button size="lg" className="brutal-shadow bg-yellow-500 hover:bg-yellow-600 text-black">
+                      <PlayCircle className="w-5 h-5 mr-2" />
+                      EXPLORE DEMO VIDEO
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

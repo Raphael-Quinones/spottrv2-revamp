@@ -305,6 +305,39 @@ export async function getBillingData() {
   };
 }
 
+export async function getDemoVideo() {
+  const supabase = await createClient();
+
+  // Get the demo video with analysis count
+  const { data: video, error } = await supabase
+    .from('videos')
+    .select(`
+      *,
+      video_analysis (
+        id
+      )
+    `)
+    .eq('id', '5728109e-abb3-43af-b0ff-88360b9a5adc')
+    .eq('is_demo', true)
+    .single();
+
+  if (error) {
+    console.error('Error fetching demo video:', error);
+    return null;
+  }
+
+  // Add analysis count
+  if (video && video.video_analysis) {
+    return {
+      ...video,
+      analysisCount: video.video_analysis.length,
+      video_analysis: undefined // Remove the array to keep response light
+    };
+  }
+
+  return video;
+}
+
 export async function getVideoById(videoId: string) {
   const supabase = await createClient();
 
