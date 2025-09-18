@@ -192,6 +192,17 @@ export async function deleteVideo(videoId: string) {
     redirect('/login');
   }
 
+  // Check if this is a demo video
+  const { data: video } = await supabase
+    .from('videos')
+    .select('is_demo')
+    .eq('id', videoId)
+    .single();
+
+  if (video?.is_demo) {
+    throw new Error('Demo videos cannot be deleted');
+  }
+
   // Delete video (will cascade delete analysis and queue entries)
   const { error } = await supabase
     .from('videos')
@@ -304,7 +315,7 @@ export async function getVideoById(videoId: string) {
   }
 
   // Get video with analysis data
-  // Allow access if user owns it OR it's a demo video
+  // First try to get the video
   const { data: video, error } = await supabase
     .from('videos')
     .select(`
@@ -318,11 +329,16 @@ export async function getVideoById(videoId: string) {
       )
     `)
     .eq('id', videoId)
-    .or(`user_id.eq.${user.id},is_demo.eq.true`)
     .single();
 
   if (error) {
     console.error('Error fetching video:', error);
+    return null;
+  }
+
+  // Check if user has access (owns it or it's a demo)
+  if (video && !video.is_demo && video.user_id !== user.id) {
+    console.error('Access denied: User does not own this video');
     return null;
   }
 

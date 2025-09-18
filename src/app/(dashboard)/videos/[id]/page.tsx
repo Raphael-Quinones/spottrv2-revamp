@@ -200,7 +200,7 @@ export default async function VideoDetailPage({
             </Button>
           </a>
         )}
-        <DeleteButton videoId={video.id} />
+        {!video.is_demo && <DeleteButton videoId={video.id} />}
       </div>
     </div>
   );
