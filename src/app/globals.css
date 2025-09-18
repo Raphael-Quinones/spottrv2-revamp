@@ -60,4 +60,18 @@
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 rgb(var(--color-border));
   }
+
+  /* Skeleton loading animation */
+  @keyframes brutalist-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  .skeleton-pulse {
+    animation: brutalist-pulse 2s ease-in-out infinite;
+  }
 }

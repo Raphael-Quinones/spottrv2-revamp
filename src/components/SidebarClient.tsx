@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import React, { useTransition } from 'react';
 import {
   Home,
   Upload,
@@ -11,7 +12,8 @@ import {
   CreditCard,
   Clock,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { formatMinutes, formatDuration } from '@/lib/utils';
 
@@ -35,6 +37,18 @@ interface SidebarClientProps {
 
 export function SidebarClient({ processingVideos, usage }: SidebarClientProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [loadingPath, setLoadingPath] = React.useState<string | null>(null);
+
+  const handleNavigation = (href: string) => {
+    setLoadingPath(href);
+    startTransition(() => {
+      router.push(href);
+      // Clear loading path after transition
+      setTimeout(() => setLoadingPath(null), 100);
+    });
+  };
 
   return (
     <aside className="w-64 min-h-screen border-r-4 border-border bg-bg">
@@ -45,20 +59,26 @@ export function SidebarClient({ processingVideos, usage }: SidebarClientProps) {
             {sidebarItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const isLoading = loadingPath === item.href;
 
               return (
-                <Link
+                <button
                   key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-3 px-4 py-3 font-mono text-sm uppercase transition-colors ${
+                  onClick={() => handleNavigation(item.href)}
+                  disabled={isLoading || isPending}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 font-mono text-sm uppercase transition-all ${
                     isActive
                       ? 'bg-fg text-bg'
                       : 'hover:bg-fg hover:text-bg'
-                  }`}
+                  } ${isLoading ? 'opacity-70' : ''}`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Icon className="w-5 h-5" />
+                  )}
+                  <span className="text-left">{item.label}</span>
+                </button>
               );
             })}
           </nav>
