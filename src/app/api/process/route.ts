@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { calculateImageTokens, calculateCost, getModelName, type ModelName } from '@/lib/token-utils';
+import { calculateCredits, calculateOurCost, checkSufficientCredits } from '@/lib/credit-utils';
 
 // Configuration flags
 const SAVE_DEBUG_GRIDS = false; // Set to true to save debug grids (not needed for analysis)
@@ -665,6 +666,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check credit balance
+    const { data: balance } = await supabase.rpc('get_credit_balance', {
+      p_user_id: user.id
+    });
+
+    const { canProceed, estimatedCredits, message } = checkSufficientCredits(
+      balance || 0,
+      'process'
+    );
+
+    if (!canProceed) {
+      return NextResponse.json({
+        error: message || 'Insufficient credits',
+        balance: balance,
+        required: estimatedCredits
+      }, { status: 402 });
+    }
+
     console.log('\n📊 === VIDEO DETAILS ===');
     console.log(`🎯 Accuracy Level: ${video.accuracy_level}`);
     console.log(`⏱️  Frame Interval: ${video.frame_interval}s`);
@@ -760,21 +779,37 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', videoId);
 
+    // Calculate credits used
+    const creditsUsed = calculateCredits(tokenTotals.inputTokens, tokenTotals.outputTokens);
+    const ourCost = calculateOurCost(tokenTotals.inputTokens, tokenTotals.outputTokens);
+
     console.log('\n🏁 === PROCESSING COMPLETE ===');
     console.log(`✅ Status: SUCCESS`);
     console.log(`⏱️  Video Duration: ${formatDuration(duration)}`);
     console.log(`🎞️  Frames Analyzed: ${frames.length} (individual frames)`);
-    console.log(`💰 Processing Cost: $${tokenTotals.cost.toFixed(4)}`);
-    console.log(`💵 Cost per frame: $${(tokenTotals.cost / frames.length).toFixed(6)}`);
-    console.log(`📈 Cost per minute: $${(tokenTotals.cost / (duration / 60)).toFixed(4)}`);
+    console.log(`📊 Total Tokens: ${tokenTotals.inputTokens + tokenTotals.outputTokens} (Input: ${tokenTotals.inputTokens}, Output: ${tokenTotals.outputTokens})`);
+    console.log(`💳 Credits Used: ${creditsUsed} ($${(creditsUsed * 0.001).toFixed(2)})`);
+    console.log(`💰 Our Cost: $${ourCost.toFixed(4)} | Markup: ${(creditsUsed * 0.001 / ourCost).toFixed(1)}x`);
     console.log(`⏰ Completed at: ${new Date().toISOString()}`);
     console.log('================================\n');
 
-    // Update usage
-    await supabase.rpc('increment_usage', {
+    // Deduct credits from user balance
+    const { data: creditResult, error: creditError } = await supabase.rpc('deduct_credits', {
       p_user_id: video.user_id,
-      p_minutes: duration / 60
+      p_credits: creditsUsed,
+      p_input_tokens: tokenTotals.inputTokens,
+      p_output_tokens: tokenTotals.outputTokens,
+      p_operation: 'process',
+      p_video_id: videoId,
+      p_description: `Processed ${frames.length} frames from ${video.filename}`
     });
+
+    if (creditError || (creditResult && !creditResult.success)) {
+      console.error('Failed to deduct credits:', creditError || creditResult?.error);
+      // Note: Video already processed, so we log but don't fail the request
+    } else if (creditResult) {
+      console.log(`💳 Credits deducted successfully. New balance: ${creditResult.balance}`);
+    }
 
     // Clean up temp files (keep original if it's stored locally)
     const isLocalVideo = video.url.startsWith('file://');

@@ -2,58 +2,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CreditCard, TrendingUp, Calendar, Check, AlertCircle, FileVideo } from 'lucide-react';
+import { CreditCard, TrendingUp, Calendar, Check, AlertCircle, FileVideo, Coins, Plus, Minus } from 'lucide-react';
 import { getBillingData } from '../actions';
-import { formatMinutes, formatDate, formatDuration } from '@/lib/utils';
+import { formatDate, formatDuration, formatRelativeTime } from '@/lib/utils';
 
 export default async function BillingPage() {
   // Fetch real billing data
   const billingData = await getBillingData();
-  const { currentPlan, user, recentActivity } = billingData;
+  const { currentPlan, user } = billingData;
 
   // Calculate usage percentage
-  const usagePercentage = currentPlan.minutesLimit > 0
-    ? Math.min((currentPlan.minutesUsed / currentPlan.minutesLimit) * 100, 100)
+  const usagePercentage = currentPlan.creditsPurchased > 0
+    ? Math.min((currentPlan.creditsUsed / currentPlan.creditsPurchased) * 100, 100)
     : 0;
 
-  // Define all available plans
-  const plans = [
-    {
-      tier: 'free',
-      name: 'Free',
-      price: 0,
-      minutes: 10,
-      models: ['GPT-5 Nano'],
-      features: ['Basic support', '0.5s frame intervals'],
-      current: currentPlan.tier === 'free',
-    },
-    {
-      tier: 'starter',
-      name: 'Starter',
-      price: 9.99,
-      minutes: 30,
-      models: ['GPT-5 Nano'],
-      features: ['Email support', '0.5s frame intervals', 'Export results'],
-      current: currentPlan.tier === 'starter',
-    },
-    {
-      tier: 'pro',
-      name: 'Pro',
-      price: 29.99,
-      minutes: 100,
-      models: ['GPT-5 Nano', 'GPT-5 Mini'],
-      features: ['Priority support', 'Custom frame intervals', 'API access', 'Batch processing'],
-      current: currentPlan.tier === 'pro',
-    },
-    {
-      tier: 'enterprise',
-      name: 'Enterprise',
-      price: 99.99,
-      minutes: 500,
-      models: ['All GPT-5 models'],
-      features: ['24/7 support', 'Custom integration', 'SLA guarantee', 'Dedicated account manager'],
-      current: currentPlan.tier === 'enterprise',
-    },
+  // Only Pro tier now
+  const plan = {
+    tier: 'pro',
+    name: 'Pro',
+    price: 29.00,
+    credits: 40000,
+    models: ['GPT-5 Nano'],
+    features: [
+      '40,000 credits monthly (~40 hours of video)',
+      'Advanced search capabilities',
+      'Custom frame intervals',
+      'Priority processing',
+      'Email support'
+    ],
+    current: true,
+  };
+
+  // Additional credit packages
+  const creditPackages = [
+    { credits: 10000, price: 10, value: '~10 hours of video' },
+    { credits: 50000, price: 45, value: '~50 hours of video' },
+    { credits: 100000, price: 85, value: '~100 hours of video' },
   ];
 
   return (
@@ -84,22 +68,30 @@ export default async function BillingPage() {
           <div className="space-y-4 mb-6">
             <div>
               <div className="flex justify-between mb-2">
-                <span className="font-mono text-sm">Minutes Used This Month</span>
+                <span className="font-mono text-sm">Credits Used This Month</span>
                 <span className="font-mono text-sm font-bold">
-                  {formatMinutes(currentPlan.minutesUsed)} / {formatMinutes(currentPlan.minutesLimit)}
+                  {currentPlan.creditsUsed.toLocaleString()} / {currentPlan.creditsPurchased.toLocaleString()}
                 </span>
               </div>
               <Progress value={usagePercentage} />
+              <div className="mt-2">
+                <p className="text-sm">
+                  <strong>{currentPlan.creditsBalance.toLocaleString()}</strong> credits remaining
+                </p>
+                <p className="text-xs text-muted-fg mt-1">
+                  {currentPlan.formattedCredits}
+                </p>
+              </div>
               {usagePercentage >= 80 && usagePercentage < 100 && (
                 <p className="text-yellow-600 text-sm mt-2 flex items-center">
                   <AlertCircle className="w-4 h-4 mr-1" />
-                  Approaching usage limit
+                  Low on credits - consider purchasing more
                 </p>
               )}
               {usagePercentage >= 100 && (
                 <p className="text-red-600 text-sm mt-2 flex items-center">
                   <AlertCircle className="w-4 h-4 mr-1" />
-                  Usage limit exceeded
+                  Credits exhausted - purchase more to continue
                 </p>
               )}
             </div>
@@ -143,54 +135,58 @@ export default async function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Available Plans */}
+      {/* Subscription Plan */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold uppercase mb-4">Available Plans</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plans.map((plan) => (
-            <Card
-              key={plan.name}
-              className={plan.current ? 'border-4' : ''}
-            >
-              <CardContent className="p-6">
-                {plan.current && (
-                  <Badge className="mb-4">Current Plan</Badge>
-                )}
-                <h3 className="text-xl font-bold uppercase mb-2">{plan.name}</h3>
-                <p className="text-3xl font-bold mb-4">
-                  ${plan.price}
-                  <span className="text-sm font-normal">/mo</span>
-                </p>
+        <h2 className="text-xl font-bold uppercase mb-4">Subscription Plan</h2>
+        <Card className="border-4">
+          <CardContent className="p-6">
+            <Badge className="mb-4">Current Plan</Badge>
+            <h3 className="text-xl font-bold uppercase mb-2">{plan.name}</h3>
+            <p className="text-3xl font-bold mb-4">
+              ${plan.price}
+              <span className="text-sm font-normal">/mo</span>
+            </p>
 
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start">
-                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="font-mono text-sm">
-                      {plan.minutes} minutes/month
-                    </span>
-                  </div>
-                  {plan.models.map((model, index) => (
-                    <div key={index} className="flex items-start">
-                      <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                      <span className="font-mono text-sm">{model}</span>
-                    </div>
-                  ))}
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start">
-                      <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                      <span className="font-mono text-sm">{feature}</span>
-                    </div>
-                  ))}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-start">
+                <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="font-mono text-sm">
+                  {plan.credits.toLocaleString()} credits monthly
+                </span>
+              </div>
+              {plan.features.map((feature, index) => (
+                <div key={index} className="flex items-start">
+                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span className="font-mono text-sm">{feature}</span>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                <Button
-                  className="w-full"
-                  variant={plan.current ? 'secondary' : 'default'}
-                  disabled={plan.current || !user.stripeCustomerId}
-                >
-                  {plan.current ? 'Current Plan' :
-                   !user.stripeCustomerId ? 'Coming Soon' :
-                   plan.price > currentPlan.price ? 'Upgrade' : 'Downgrade'}
+      {/* Additional Credits */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold uppercase mb-4">Purchase Additional Credits</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {creditPackages.map((pkg) => (
+            <Card key={pkg.credits}>
+              <CardContent className="p-6">
+                <div className="text-center mb-4">
+                  <Coins className="w-12 h-12 mx-auto mb-2" />
+                  <h3 className="text-2xl font-bold">
+                    {pkg.credits.toLocaleString()}
+                  </h3>
+                  <p className="font-mono text-sm text-muted-fg">credits</p>
+                </div>
+                <p className="text-xl font-bold text-center mb-2">
+                  ${pkg.price}
+                </p>
+                <p className="text-xs text-center text-muted-fg mb-4">
+                  {pkg.value}
+                </p>
+                <Button className="w-full" disabled={!user.stripeCustomerId}>
+                  {!user.stripeCustomerId ? 'Coming Soon' : 'Purchase'}
                 </Button>
               </CardContent>
             </Card>
@@ -198,16 +194,16 @@ export default async function BillingPage() {
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Transactions */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Video Processing</CardTitle>
+          <CardTitle>Recent Credit Transactions</CardTitle>
         </CardHeader>
         <CardContent>
-          {recentActivity.length === 0 ? (
+          {billingData.recentTransactions.length === 0 ? (
             <div className="text-center py-8 text-muted-fg">
-              <FileVideo className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No videos processed yet</p>
+              <Coins className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No transactions yet</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -215,25 +211,38 @@ export default async function BillingPage() {
                 <thead>
                   <tr className="border-b-2 border-border">
                     <th className="text-left p-4 font-bold uppercase text-sm">Date</th>
-                    <th className="text-left p-4 font-bold uppercase text-sm">Video</th>
-                    <th className="text-left p-4 font-bold uppercase text-sm">Duration</th>
-                    <th className="text-left p-4 font-bold uppercase text-sm">Minutes Used</th>
+                    <th className="text-left p-4 font-bold uppercase text-sm">Type</th>
+                    <th className="text-left p-4 font-bold uppercase text-sm">Description</th>
+                    <th className="text-right p-4 font-bold uppercase text-sm">Credits</th>
+                    <th className="text-right p-4 font-bold uppercase text-sm">Balance</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentActivity.map((video: any) => (
-                    <tr key={video.id} className="border-b border-border">
+                  {billingData.recentTransactions.map((tx: any) => (
+                    <tr key={tx.id} className="border-b border-border">
                       <td className="p-4 font-mono text-sm">
-                        {formatDate(video.created_at)}
+                        {formatRelativeTime(tx.created_at)}
                       </td>
-                      <td className="p-4 font-mono text-sm truncate max-w-[200px]" title={video.filename}>
-                        {video.filename}
+                      <td className="p-4">
+                        <Badge variant={tx.credits_amount > 0 ? 'success' : 'secondary'}>
+                          {tx.transaction_type.replace('_', ' ')}
+                        </Badge>
                       </td>
-                      <td className="p-4 font-mono text-sm">
-                        {video.duration_seconds ? formatDuration(video.duration_seconds) : '-'}
+                      <td className="p-4 font-mono text-sm truncate max-w-[300px]" title={tx.description}>
+                        {tx.description || '-'}
                       </td>
-                      <td className="p-4 font-mono text-sm">
-                        {video.duration_seconds ? formatMinutes(video.duration_seconds / 60) : '-'}
+                      <td className="p-4 font-mono text-sm text-right">
+                        <span className={tx.credits_amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {tx.credits_amount > 0 ? (
+                            <Plus className="w-3 h-3 inline mr-1" />
+                          ) : (
+                            <Minus className="w-3 h-3 inline mr-1" />
+                          )}
+                          {Math.abs(tx.credits_amount).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono text-sm text-right">
+                        {tx.balance_after.toLocaleString()}
                       </td>
                     </tr>
                   ))}

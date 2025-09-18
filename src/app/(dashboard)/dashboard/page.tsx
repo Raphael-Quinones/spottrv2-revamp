@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, Clock, CheckCircle, Upload, Search, AlertCircle, PlayCircle, Sparkles } from 'lucide-react';
+import { Video, Coins, CheckCircle, Upload, Search, AlertCircle, PlayCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { getDashboardStats, getRecentVideos, getDemoVideo } from '../actions';
-import { formatDuration, formatRelativeTime, formatMinutes } from '@/lib/utils';
+import { formatDuration, formatRelativeTime } from '@/lib/utils';
 
 export default async function DashboardPage() {
   // Fetch real data from database
@@ -14,8 +14,8 @@ export default async function DashboardPage() {
     getDemoVideo(),
   ]);
 
-  const usagePercentage = stats.minutesLimit > 0
-    ? (stats.minutesUsed / stats.minutesLimit) * 100
+  const usagePercentage = stats.creditsPurchased > 0
+    ? (stats.creditsUsed / stats.creditsPurchased) * 100
     : 0;
 
   return (
@@ -52,19 +52,22 @@ export default async function DashboardPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <Clock className="w-8 h-8" />
-              <span className="text-2xl font-bold">{formatMinutes(stats.minutesUsed)}</span>
+              <Coins className="w-8 h-8" />
+              <span className="text-2xl font-bold">{stats.creditsBalance.toLocaleString()}</span>
             </div>
-            <p className="font-mono text-xs uppercase text-muted-fg">Minutes Used</p>
+            <p className="font-mono text-xs uppercase text-muted-fg">Credits Available</p>
           </CardContent>
         </Card>
 
         <Card className="border-4">
           <CardContent className="p-6">
             <div className="mb-2">
-              <div className="flex justify-between mb-1">
+              <div className="flex flex-col mb-2">
                 <span className="text-2xl font-bold">
-                  {formatMinutes(stats.minutesUsed)}/{formatMinutes(stats.minutesLimit)}
+                  {stats.creditsUsed.toLocaleString()} / {stats.creditsPurchased.toLocaleString()}
+                </span>
+                <span className="font-mono text-xs text-muted-fg mt-1">
+                  {stats.formattedRemaining}
                 </span>
               </div>
               <div className="h-2 bg-muted border border-border">
@@ -77,9 +80,12 @@ export default async function DashboardPage() {
                 />
               </div>
             </div>
-            <p className="font-mono text-xs uppercase text-muted-fg">
-              {stats.subscriptionTier === 'enterprise' ? 'Unlimited' : 'Monthly Limit'}
-            </p>
+            <div className="mt-3 pt-3 border-t border-border">
+              <p className="font-mono text-xs uppercase text-muted-fg mb-1">Equivalent to:</p>
+              <p className="text-sm font-medium">
+                ~{stats.valueMetrics.videoHours} video hours OR ~{stats.valueMetrics.searches} searches
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

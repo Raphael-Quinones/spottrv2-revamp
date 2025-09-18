@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, FileVideo, Settings2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileVideo, Settings2, AlertCircle, CheckCircle, Coins } from 'lucide-react';
 import { getUserUsage } from '../actions';
-import { formatMinutes } from '@/lib/utils';
+import { estimateVideoCredits } from '@/lib/credit-utils';
 
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -101,11 +101,9 @@ export default function UploadPage() {
     );
   }
 
-  // DEV MODE: Allow uploads regardless of usage limits
-  const canUpload = true; // Was: !usage?.isExceeded;
+  // Check if user has enough credits (min 100 to start)
+  const canUpload = usage?.creditsBalance >= 100;
   const usagePercentage = Number(usage?.percentageUsed) || 0;
-  const minutesUsed = Number(usage?.minutesUsed) || 0;
-  const minutesLimit = Number(usage?.minutesLimit) || 10;
 
   return (
     <div className="max-w-4xl">
@@ -131,14 +129,17 @@ export default function UploadPage() {
               <div className="flex-1">
                 <h3 className="font-bold mb-2">
                   {usage.isExceeded
-                    ? 'Usage Limit Exceeded'
+                    ? 'Insufficient Credits'
                     : usagePercentage >= 80
-                    ? 'Approaching Usage Limit'
-                    : 'Usage Status'}
+                    ? 'Low Credit Balance'
+                    : 'Credit Balance'}
                 </h3>
                 <p className="font-mono text-sm mb-3">
-                  You've used {formatMinutes(usage.minutesUsed)} of {formatMinutes(usage.minutesLimit)} this month
-                  ({Math.round(usagePercentage)}%)
+                  <Coins className="w-4 h-4 inline mr-1" />
+                  {usage.creditsBalance.toLocaleString()} credits available
+                </p>
+                <p className="text-xs text-muted-fg mb-2">
+                  {usage.formattedRemaining}
                 </p>
                 <div className="h-2 bg-muted border border-border">
                   <div
@@ -151,7 +152,12 @@ export default function UploadPage() {
                 </div>
                 {usage.isExceeded && (
                   <p className="text-sm text-red-500 mt-3">
-                    Please upgrade your subscription to continue uploading videos.
+                    You need at least 100 credits to upload a video. Please purchase more credits to continue.
+                  </p>
+                )}
+                {selectedFile && (
+                  <p className="text-sm mt-3">
+                    Estimated credits for this video: ~{Math.ceil(selectedFile.size / (1024 * 1024 * 10)) * 100} credits
                   </p>
                 )}
               </div>
@@ -246,7 +252,7 @@ export default function UploadPage() {
         onClick={handleUpload}
         disabled={!selectedFile || !prompt || !canUpload || loading}
       >
-        {loading ? 'Uploading...' : !canUpload ? 'Usage Limit Exceeded' : 'Upload Video'}
+        {loading ? 'Uploading...' : !canUpload ? 'Insufficient Credits (need 100+)' : 'Upload Video'}
       </Button>
     </div>
   );

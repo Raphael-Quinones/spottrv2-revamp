@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { formatCredits, calculateValueMetrics, formatRemainingCredits } from '@/lib/credit-utils';
 
 export async function getDashboardStats() {
   const supabase = await createClient();
@@ -36,50 +37,48 @@ export async function getDashboardStats() {
     .eq('status', 'completed')
     .gte('processed_at', today.toISOString());
 
-  // Get usage for current month
+  // Get credit balance using the database function
+  const { data: balance } = await supabase.rpc('get_credit_balance', {
+    p_user_id: user.id
+  });
+
+  const creditsBalance = balance || 0;
+
+  // Get usage data for current month to get tokens and video count
   const currentMonth = new Date();
   currentMonth.setDate(1);
   currentMonth.setHours(0, 0, 0, 0);
 
-  // Try to create usage record if doesn't exist
-  try {
-    await supabase.rpc('get_or_create_usage_record', {
-      p_user_id: user.id
-    });
-  } catch (err) {
-    console.log('Usage record may already exist:', err);
-  }
-
   const { data: usageData } = await supabase
     .from('usage_tracking')
-    .select('minutes_used, video_count')
+    .select('credits_purchased, total_input_tokens, total_output_tokens, video_count')
     .eq('user_id', user.id)
     .eq('month', currentMonth.toISOString().split('T')[0])
     .single();
 
-  // Determine usage limit based on subscription tier
-  const tier = userProfile?.subscription_tier || 'free';
-  let minutesLimit = 10; // default free tier
+  // Calculate credits used from purchased - balance
+  const creditsPurchased = usageData?.credits_purchased || 40000; // Default to pro tier allocation
+  const creditsUsed = creditsPurchased - creditsBalance;
 
-  switch (tier) {
-    case 'pro':
-      minutesLimit = 100;
-      break;
-    case 'enterprise':
-      minutesLimit = 999999; // effectively unlimited
-      break;
-  }
+  // Calculate value metrics
+  const valueMetrics = calculateValueMetrics(creditsBalance);
 
-  // Ensure we return valid numbers
-  const minutesUsed = Number(usageData?.minutes_used) || 0;
+  // Get subscription tier (only 'pro' now, no free tier)
+  const tier = userProfile?.subscription_tier || 'pro';
 
   return {
     totalVideos: totalVideos || 0,
     processedToday: processedToday || 0,
-    minutesUsed: minutesUsed,
-    minutesLimit: minutesLimit,
+    creditsBalance: creditsBalance,
+    creditsUsed: creditsUsed,
+    creditsPurchased: creditsPurchased,
+    totalInputTokens: usageData?.total_input_tokens || 0,
+    totalOutputTokens: usageData?.total_output_tokens || 0,
     videoCount: usageData?.video_count || 0,
     subscriptionTier: tier,
+    valueMetrics: valueMetrics,
+    formattedCredits: formatCredits(creditsBalance),
+    formattedRemaining: formatRemainingCredits(creditsBalance),
   };
 }
 
@@ -143,43 +142,40 @@ export async function getUserUsage() {
     redirect('/login');
   }
 
-  // First ensure user has a usage record for current month
+  // Get credit balance
+  const { data: balance } = await supabase.rpc('get_credit_balance', {
+    p_user_id: user.id
+  });
+
+  const creditsBalance = balance || 0;
+
+  // Get current month usage data
   const currentMonth = new Date();
   currentMonth.setDate(1);
   currentMonth.setHours(0, 0, 0, 0);
 
-  // Try to create record if doesn't exist (will do nothing if exists)
-  try {
-    await supabase.rpc('get_or_create_usage_record', {
-      p_user_id: user.id
-    });
-  } catch (err) {
-    console.log('Usage record may already exist:', err);
-  }
+  const { data: usageData } = await supabase
+    .from('usage_tracking')
+    .select('credits_purchased')
+    .eq('user_id', user.id)
+    .eq('month', currentMonth.toISOString().split('T')[0])
+    .single();
 
-  // Call the check_usage_limit function
-  const { data, error } = await supabase
-    .rpc('check_usage_limit', { p_user_id: user.id });
+  const creditsPurchased = usageData?.credits_purchased || 40000;
+  const creditsUsed = creditsPurchased - creditsBalance;
+  const percentageUsed = creditsPurchased > 0 ? (creditsUsed / creditsPurchased) * 100 : 0;
 
-  if (error) {
-    console.error('Error checking usage limit:', error);
-    // Return defaults on error
-    return {
-      isExceeded: false,
-      minutesUsed: 0,
-      minutesLimit: 10,
-      percentageUsed: 0,
-    };
-  }
-
-  // Ensure we return valid numbers
-  const result = data?.[0] || {};
+  // Check if credits are exhausted (less than 100 credits remaining)
+  const isExceeded = creditsBalance < 100;
 
   return {
-    isExceeded: result.is_exceeded === true,
-    minutesUsed: Number(result.minutes_used) || 0,
-    minutesLimit: Number(result.minutes_limit) || 10,
-    percentageUsed: Number(result.percentage_used) || 0,
+    isExceeded,
+    creditsBalance,
+    creditsUsed,
+    creditsPurchased,
+    percentageUsed: Math.round(percentageUsed),
+    formattedCredits: formatCredits(creditsBalance),
+    formattedRemaining: formatRemainingCredits(creditsBalance),
   };
 }
 
@@ -234,15 +230,21 @@ export async function getBillingData() {
     .eq('id', user.id)
     .single();
 
-  // Get current month for usage
+  // Get credit balance
+  const { data: balance } = await supabase.rpc('get_credit_balance', {
+    p_user_id: user.id
+  });
+
+  const creditsBalance = balance || 0;
+
+  // Get current month usage data
   const currentMonth = new Date();
   currentMonth.setDate(1);
   currentMonth.setHours(0, 0, 0, 0);
 
-  // Get usage data
   const { data: usage } = await supabase
     .from('usage_tracking')
-    .select('minutes_used, video_count')
+    .select('credits_purchased, total_input_tokens, total_output_tokens, video_count')
     .eq('user_id', user.id)
     .eq('month', currentMonth.toISOString().split('T')[0])
     .single();
@@ -252,56 +254,46 @@ export async function getBillingData() {
   nextBilling.setMonth(nextBilling.getMonth() + 1);
   nextBilling.setDate(1);
 
-  // Get limits based on tier
-  const tier = userProfile?.subscription_tier || 'free';
-  let minutesLimit = 10;
-  let tierName = 'Free';
-  let price = 0;
+  // Only pro tier now (no free tier)
+  const tier = userProfile?.subscription_tier || 'pro';
+  const creditsPurchased = usage?.credits_purchased || 40000;
+  const creditsUsed = creditsPurchased - creditsBalance;
 
-  switch (tier) {
-    case 'pro':
-      minutesLimit = 100;
-      tierName = 'Pro';
-      price = 29.99;
-      break;
-    case 'enterprise':
-      minutesLimit = 999999;
-      tierName = 'Enterprise';
-      price = 99.99;
-      break;
-    case 'starter':
-      minutesLimit = 30;
-      tierName = 'Starter';
-      price = 9.99;
-      break;
-  }
-
-  // Get recent videos for billing history (as proxy for now)
-  const { data: recentVideos } = await supabase
-    .from('videos')
-    .select('id, created_at, duration_seconds, filename')
+  // Get recent credit transactions
+  const { data: recentTransactions } = await supabase
+    .from('credit_transactions')
+    .select('*')
     .eq('user_id', user.id)
-    .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(10);
 
+  // Calculate value metrics
+  const valueMetrics = calculateValueMetrics(creditsBalance);
+
   return {
     currentPlan: {
-      tier: tier,
-      name: tierName,
-      price: price,
-      minutesUsed: Number(usage?.minutes_used) || 0,
-      minutesLimit: minutesLimit,
+      tier: 'pro',
+      name: 'Pro',
+      price: 29.00,
+      creditsBalance: creditsBalance,
+      creditsUsed: creditsUsed,
+      creditsPurchased: creditsPurchased,
       videoCount: usage?.video_count || 0,
       nextBilling: nextBilling.toISOString().split('T')[0],
       isActive: true,
+      valueMetrics: valueMetrics,
+      formattedCredits: formatCredits(creditsBalance),
     },
     user: {
       email: userProfile?.email || user.email,
       createdAt: userProfile?.created_at,
       stripeCustomerId: userProfile?.stripe_customer_id,
     },
-    recentActivity: recentVideos || [],
+    recentTransactions: recentTransactions || [],
+    tokenUsage: {
+      inputTokens: usage?.total_input_tokens || 0,
+      outputTokens: usage?.total_output_tokens || 0,
+    },
   };
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
+import { calculateCredits, checkSufficientCredits } from '@/lib/credit-utils';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!
@@ -100,6 +101,10 @@ async function searchWithGPT5(analyses: any[], query: string, frameInterval: num
 
   console.log(`📦 Split into ${chunks.length} chunks of up to ${CHUNK_SIZE} frames each`);
 
+  // Track total tokens for credit calculation
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+
   // Process chunks in parallel
   const searchChunk = async (chunk: any[], chunkIndex: number) => {
     console.log(`  🔍 Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} frames)`);
@@ -163,6 +168,10 @@ If no matches found, return: {"matches": []}`
       const tokens = response.usage;
       console.log(`     📊 Tokens: Input: ${tokens?.prompt_tokens}, Output: ${tokens?.completion_tokens}`);
 
+      // Track tokens for credit calculation
+      totalInputTokens += tokens?.prompt_tokens || 0;
+      totalOutputTokens += tokens?.completion_tokens || 0;
+
       return result.matches || [];
     } catch (error) {
       console.error(`     ❌ Error in chunk ${chunkIndex + 1}:`, error);
@@ -181,6 +190,7 @@ If no matches found, return: {"matches": []}`
     const allMatches = chunkResults.flat();
 
     console.log(`\n✅ Search complete! Total matches found: ${allMatches.length}`);
+    console.log(`📊 Total tokens used - Input: ${totalInputTokens}, Output: ${totalOutputTokens}`);
 
     if (allMatches.length > 0) {
       console.log('\n📍 All matches:');
@@ -192,7 +202,13 @@ If no matches found, return: {"matches": []}`
       });
     }
 
-    return { matches: allMatches };
+    return {
+      matches: allMatches,
+      tokens: {
+        input: totalInputTokens,
+        output: totalOutputTokens
+      }
+    };
   } catch (error) {
     console.error('❌ Search error:', error);
     throw error;
@@ -224,7 +240,7 @@ export async function POST(request: NextRequest) {
     // Verify user owns the video
     const { data: video, error: videoError } = await supabase
       .from('videos')
-      .select('id, user_id, frame_interval, duration_seconds')
+      .select('id, user_id, frame_interval, duration_seconds, filename')
       .eq('id', videoId)
       .eq('user_id', user.id)
       .single();
@@ -259,12 +275,64 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Check credit balance before searching
+    const { data: balance } = await supabase.rpc('get_credit_balance', {
+      p_user_id: user.id
+    });
+
+    const { canProceed, estimatedCredits, message } = checkSufficientCredits(
+      balance || 0,
+      'search',
+      video.duration_seconds ? video.duration_seconds / 60 : undefined
+    );
+
+    if (!canProceed) {
+      return NextResponse.json({
+        error: message || 'Insufficient credits',
+        balance: balance,
+        required: estimatedCredits
+      }, { status: 402 });
+    }
+
     // Call GPT-5 nano for intelligent search
     const searchResults = await searchWithGPT5(
       analyses,
       query,
       video.frame_interval || 0.5
     );
+
+    // Calculate and deduct credits
+    if (searchResults.tokens) {
+      const creditsUsed = calculateCredits(searchResults.tokens.input, searchResults.tokens.output);
+
+      // Deduct credits
+      const { data: creditResult, error: creditError } = await supabase.rpc('deduct_credits', {
+        p_user_id: user.id,
+        p_credits: creditsUsed,
+        p_input_tokens: searchResults.tokens.input,
+        p_output_tokens: searchResults.tokens.output,
+        p_operation: 'search',
+        p_video_id: videoId,
+        p_description: `Search query: "${query}" on ${video.filename || 'video'}`
+      });
+
+      if (creditError || (creditResult && !creditResult.success)) {
+        console.error('Failed to deduct credits:', creditError || creditResult?.error);
+      }
+
+      // Log search to database
+      await supabase.from('search_logs').insert({
+        user_id: user.id,
+        video_id: videoId,
+        query: query,
+        input_tokens: searchResults.tokens.input,
+        output_tokens: searchResults.tokens.output,
+        credits_used: creditsUsed,
+        result_count: searchResults.matches?.length || 0
+      });
+
+      console.log(`💳 Credits Used: ${creditsUsed} ($${(creditsUsed * 0.001).toFixed(3)})`);
+    }
 
     // Merge adjacent ranges
     const mergedRanges = mergeTimestampRanges(
