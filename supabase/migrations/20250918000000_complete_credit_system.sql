@@ -1,18 +1,24 @@
--- Migration: Implement credit-based billing system
--- Purpose: Replace minute-based billing with token-based credits (10x markup)
+-- Migration: Complete Credit System Implementation
+-- Purpose: Consolidated credit-based billing system with 10x markup on GPT-5 nano
 -- Date: 2025-09-18
+--
+-- This migration consolidates all credit system functionality into one clean migration
+-- Pricing: 1 credit = $0.001, with 10x markup on actual GPT-5 nano costs
+-- Tiers: Free (1,000), Pro (40,000), Enterprise (100,000) credits per month
 
--- Note: We keep the existing subscription_tier enum but only use 'pro'
--- Users must have 'pro' tier to use the platform (no free tier)
-
--- Add credit tracking columns to usage_tracking
+-- =====================================
+-- 1. MODIFY USAGE TRACKING TABLE
+-- =====================================
+-- Add credit tracking columns to existing usage_tracking table
 ALTER TABLE usage_tracking
 ADD COLUMN IF NOT EXISTS credits_balance INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS total_input_tokens BIGINT DEFAULT 0,
 ADD COLUMN IF NOT EXISTS total_output_tokens BIGINT DEFAULT 0,
 ADD COLUMN IF NOT EXISTS credits_purchased INTEGER DEFAULT 0;
 
--- Create credit transactions table for audit trail
+-- =====================================
+-- 2. CREATE CREDIT TRANSACTIONS TABLE
+-- =====================================
 CREATE TABLE IF NOT EXISTS credit_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -26,7 +32,9 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Create search logs table to track search token usage
+-- =====================================
+-- 3. CREATE SEARCH LOGS TABLE
+-- =====================================
 CREATE TABLE IF NOT EXISTS search_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -39,7 +47,9 @@ CREATE TABLE IF NOT EXISTS search_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Create indexes for performance
+-- =====================================
+-- 4. CREATE INDEXES FOR PERFORMANCE
+-- =====================================
 CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_credit_transactions_created_at ON credit_transactions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON credit_transactions(transaction_type);
@@ -47,7 +57,9 @@ CREATE INDEX IF NOT EXISTS idx_search_logs_user_id ON search_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_search_logs_video_id ON search_logs(video_id);
 CREATE INDEX IF NOT EXISTS idx_search_logs_created_at ON search_logs(created_at DESC);
 
--- Enable RLS on new tables
+-- =====================================
+-- 5. ENABLE ROW LEVEL SECURITY
+-- =====================================
 ALTER TABLE credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE search_logs ENABLE ROW LEVEL SECURITY;
 
@@ -65,7 +77,10 @@ CREATE POLICY "Users can view own search logs" ON search_logs
 CREATE POLICY "Service role can manage search logs" ON search_logs
     FOR ALL USING (auth.role() = 'service_role');
 
--- Function to calculate credits from tokens (10x markup)
+-- =====================================
+-- 6. CORE CREDIT CALCULATION FUNCTION
+-- =====================================
+-- Calculate credits from tokens with exact 10x markup
 -- GPT-5 nano base: Input $0.05/1M, Output $0.40/1M
 -- With 10x markup: Input $0.0005/1k, Output $0.004/1k
 -- 1 credit = $0.001
@@ -88,7 +103,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- Function to deduct credits with balance check
+-- =====================================
+-- 7. DEDUCT CREDITS FUNCTION
+-- =====================================
+-- Atomically deduct credits with balance validation
 CREATE OR REPLACE FUNCTION deduct_credits(
   p_user_id UUID,
   p_credits INTEGER,
@@ -166,7 +184,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to add credits (for purchases or monthly allocations)
+-- =====================================
+-- 8. ADD CREDITS FUNCTION
+-- =====================================
+-- Add credits for purchases or monthly allocations
 CREATE OR REPLACE FUNCTION add_credits(
   p_user_id UUID,
   p_credits INTEGER,
@@ -212,7 +233,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to get user's current credit balance
+-- =====================================
+-- 9. GET CREDIT BALANCE FUNCTION
+-- =====================================
+-- Get user's current credit balance
 CREATE OR REPLACE FUNCTION get_credit_balance(p_user_id UUID)
 RETURNS INTEGER AS $$
 DECLARE
@@ -225,61 +249,14 @@ BEGIN
   FROM usage_tracking
   WHERE user_id = p_user_id AND month = v_month;
 
+  -- Return 0 if no record exists (user needs to allocate credits)
   RETURN COALESCE(v_balance, 0);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to allocate monthly credits (40,000 for pro tier)
-CREATE OR REPLACE FUNCTION allocate_monthly_credits(p_user_id UUID)
-RETURNS JSONB AS $$
-DECLARE
-  v_tier subscription_tier;
-  v_credits INTEGER;
-  v_month DATE;
-  v_existing_allocation INTEGER;
-BEGIN
-  v_month := DATE_TRUNC('month', CURRENT_DATE);
-
-  -- Get user's tier
-  SELECT subscription_tier INTO v_tier
-  FROM users WHERE id = p_user_id;
-
-  -- Only 'pro' tier gets credits (no free tier)
-  IF v_tier != 'pro' THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'error', 'User must have pro subscription to receive credits'
-    );
-  END IF;
-
-  -- Check if already allocated this month
-  SELECT COUNT(*) INTO v_existing_allocation
-  FROM credit_transactions
-  WHERE user_id = p_user_id
-  AND transaction_type = 'monthly_allocation'
-  AND DATE_TRUNC('month', created_at) = v_month;
-
-  IF v_existing_allocation > 0 THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'error', 'Credits already allocated for this month'
-    );
-  END IF;
-
-  -- Pro tier gets 40,000 credits
-  v_credits := 40000;
-
-  -- Add credits
-  RETURN add_credits(
-    p_user_id,
-    v_credits,
-    'monthly_allocation',
-    'Monthly credit allocation for pro subscription'
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Create view for credit usage analytics
+-- =====================================
+-- 10. CREATE USAGE ANALYTICS VIEW
+-- =====================================
 CREATE OR REPLACE VIEW credit_usage_summary AS
 SELECT
   u.id as user_id,
@@ -295,18 +272,34 @@ FROM users u
 LEFT JOIN usage_tracking ut ON u.id = ut.user_id
 WHERE ut.month = DATE_TRUNC('month', CURRENT_DATE);
 
--- Migrate existing usage data to credits
--- Convert minutes to approximate credits (1 minute ≈ 60 credits based on our calculations)
-UPDATE usage_tracking
-SET credits_balance = GREATEST(0, 40000 - (COALESCE(minutes_used, 0) * 60)::INTEGER),
-    credits_purchased = 40000
-WHERE credits_balance IS NULL OR credits_balance = 0;
-
--- Add comments for documentation
+-- =====================================
+-- 11. ADD DOCUMENTATION COMMENTS
+-- =====================================
 COMMENT ON TABLE credit_transactions IS 'Audit trail of all credit transactions';
 COMMENT ON TABLE search_logs IS 'Tracks token usage and credits for search operations';
 COMMENT ON FUNCTION calculate_credits IS 'Calculates credits from tokens with 10x markup';
 COMMENT ON FUNCTION deduct_credits IS 'Atomically deducts credits with validation';
 COMMENT ON FUNCTION add_credits IS 'Adds credits from purchases or monthly allocation';
 COMMENT ON FUNCTION get_credit_balance IS 'Gets current credit balance for a user';
-COMMENT ON FUNCTION allocate_monthly_credits IS 'Allocates 40,000 monthly credits for pro users';
+
+-- =====================================
+-- 12. MIGRATE EXISTING DATA (if any)
+-- =====================================
+-- Convert any existing minute-based usage to approximate credits
+-- This is a one-time migration for existing data
+DO $$
+BEGIN
+  -- Only run if there's existing data without credits
+  IF EXISTS (
+    SELECT 1 FROM usage_tracking
+    WHERE credits_balance = 0
+    AND minutes_used > 0
+  ) THEN
+    -- Convert minutes to credits (1 minute ≈ 60 credits based on calculations)
+    UPDATE usage_tracking
+    SET
+      credits_balance = GREATEST(0, 40000 - (COALESCE(minutes_used, 0) * 60)::INTEGER),
+      credits_purchased = 40000
+    WHERE credits_balance = 0;
+  END IF;
+END $$;

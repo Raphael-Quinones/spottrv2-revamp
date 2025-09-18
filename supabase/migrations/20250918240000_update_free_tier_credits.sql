@@ -1,9 +1,15 @@
--- Migration: Enable free tier with 1,000 monthly credits
--- Purpose: Give free users 1,000 credits per month to try the platform
+-- Migration: Enable Free Tier with Monthly Credit Allocation
+-- Purpose: Update credit allocation to support free tier with 1,000 credits/month
 -- Date: 2025-09-18
--- Cost: ~$0.10 per free user per month
+--
+-- This updates the allocate_monthly_credits function to support all tiers:
+-- Free: 1,000 credits (~1 hour video, cost: $0.10/month)
+-- Pro: 40,000 credits (~40 hours video, cost: $4.00/month, charge: $29/month)
+-- Enterprise: 100,000 credits (~100 hours video, customizable)
 
--- Update the allocate_monthly_credits function to support free tier
+-- =====================================
+-- UPDATE MONTHLY ALLOCATION FUNCTION
+-- =====================================
 CREATE OR REPLACE FUNCTION allocate_monthly_credits(p_user_id UUID)
 RETURNS JSONB AS $$
 DECLARE
@@ -25,7 +31,7 @@ BEGIN
     WHEN 'pro' THEN
       v_credits := 40000; -- 40,000 credits for pro tier
     WHEN 'enterprise' THEN
-      v_credits := 100000; -- 100,000 credits for enterprise (can be customized)
+      v_credits := 100000; -- 100,000 credits for enterprise (customizable)
     ELSE
       RETURN jsonb_build_object(
         'success', false,
@@ -57,8 +63,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to auto-allocate credits at the start of each month
--- This can be called by a cron job or trigger
+-- =====================================
+-- BATCH ALLOCATION FUNCTION
+-- =====================================
+-- Function to allocate credits for all users (can be called by scheduler)
 CREATE OR REPLACE FUNCTION allocate_monthly_credits_for_all_users()
 RETURNS JSONB AS $$
 DECLARE
@@ -95,40 +103,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Update get_credit_balance to handle new users with no record
-CREATE OR REPLACE FUNCTION get_credit_balance(p_user_id UUID)
-RETURNS INTEGER AS $$
-DECLARE
-  v_balance INTEGER;
-  v_month DATE;
-  v_tier subscription_tier;
-BEGIN
-  v_month := DATE_TRUNC('month', CURRENT_DATE);
-
-  -- Get user's tier
-  SELECT subscription_tier INTO v_tier
-  FROM users WHERE id = p_user_id;
-
-  -- Get balance for current month
-  SELECT credits_balance INTO v_balance
-  FROM usage_tracking
-  WHERE user_id = p_user_id AND month = v_month;
-
-  -- If no record exists and user is new this month, return 0
-  -- They need to call allocate_monthly_credits to get their credits
-  IF v_balance IS NULL THEN
-    RETURN 0;
-  END IF;
-
-  RETURN v_balance;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Add comments for documentation
+-- =====================================
+-- ADD FUNCTION COMMENTS
+-- =====================================
 COMMENT ON FUNCTION allocate_monthly_credits IS 'Allocates monthly credits based on subscription tier: free=1000, pro=40000, enterprise=100000';
 COMMENT ON FUNCTION allocate_monthly_credits_for_all_users IS 'Batch function to allocate monthly credits for all active users - can be called by scheduler';
 
--- Allocate credits for any existing free tier users who don't have credits yet
+-- =====================================
+-- INITIAL ALLOCATION
+-- =====================================
+-- Allocate credits for any existing users who don't have credits yet
 DO $$
 DECLARE
   v_result JSONB;
