@@ -202,18 +202,6 @@ export default async function VideoDetailPage({
         )}
       </div>
 
-      {/* Debug Info - Remove this after testing */}
-      {isCompleted && (
-        <Card className="mb-4 border-2 border-yellow-500">
-          <CardContent className="p-4 font-mono text-xs">
-            <div>Debug Info:</div>
-            <div>- Status: {video.status}</div>
-            <div>- Has URL: {video.url ? 'Yes' : 'No'}</div>
-            <div>- Has video_analysis: {video.video_analysis ? 'Yes' : 'No'}</div>
-            <div>- Analysis count: {video.video_analysis?.length || 0}</div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Video Player with AI Search (if completed) */}
       {isCompleted && video.url && video.video_analysis && video.video_analysis.length > 0 && (
