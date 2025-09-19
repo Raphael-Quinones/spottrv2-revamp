@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { formatCredits, calculateValueMetrics, formatRemainingCredits } from '@/lib/credit-utils';
+import { getAutumnUsage, getAutumnSubscription } from '@/lib/autumn/server';
 
 export async function getDashboardStats() {
   const supabase = await createClient();
@@ -37,32 +38,28 @@ export async function getDashboardStats() {
     .eq('status', 'completed')
     .gte('processed_at', today.toISOString());
 
-  // Get credit balance using the database function
-  const { data: balance } = await supabase.rpc('get_credit_balance', {
-    p_user_id: user.id
-  });
+  // Get credit usage from Autumn
+  const autumnUsage = await getAutumnUsage(user.id);
+  const creditsBalance = autumnUsage.balance;
+  const creditsUsed = autumnUsage.used;
+  const creditsPurchased = autumnUsage.limit;
 
-  const creditsBalance = balance || 0;
+  // Get subscription info from Autumn
+  const subscription = await getAutumnSubscription(user.id);
+  const tier = subscription?.productId === 'spottr_pro' ? 'pro' :
+               subscription?.productId === 'spottr_enterprise' ? 'enterprise' : 'free';
 
-  // Get usage data for current month to get tokens and video count
+  // Get video count from database (still stored there)
   const currentMonth = new Date();
   currentMonth.setDate(1);
   currentMonth.setHours(0, 0, 0, 0);
 
   const { data: usageData } = await supabase
     .from('usage_tracking')
-    .select('credits_purchased, total_input_tokens, total_output_tokens, video_count')
+    .select('total_input_tokens, total_output_tokens, video_count')
     .eq('user_id', user.id)
     .eq('month', currentMonth.toISOString().split('T')[0])
     .single();
-
-  // Get subscription tier to determine default credits
-  const tier = userProfile?.subscription_tier || 'free';
-  const defaultCredits = tier === 'free' ? 1000 : tier === 'pro' ? 40000 : 100000;
-
-  // Calculate credits used from purchased - balance
-  const creditsPurchased = usageData?.credits_purchased || defaultCredits;
-  const creditsUsed = creditsPurchased - creditsBalance;
 
   // Calculate value metrics
   const valueMetrics = calculateValueMetrics(creditsBalance);
@@ -143,36 +140,11 @@ export async function getUserUsage() {
     redirect('/login');
   }
 
-  // Get credit balance
-  const { data: balance } = await supabase.rpc('get_credit_balance', {
-    p_user_id: user.id
-  });
-
-  const creditsBalance = balance || 0;
-
-  // Get current month usage data
-  const currentMonth = new Date();
-  currentMonth.setDate(1);
-  currentMonth.setHours(0, 0, 0, 0);
-
-  const { data: usageData } = await supabase
-    .from('usage_tracking')
-    .select('credits_purchased')
-    .eq('user_id', user.id)
-    .eq('month', currentMonth.toISOString().split('T')[0])
-    .single();
-
-  // Get user's tier to determine default credits
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('subscription_tier')
-    .eq('id', user.id)
-    .single();
-
-  const tier = userProfile?.subscription_tier || 'free';
-  const defaultCredits = tier === 'free' ? 1000 : tier === 'pro' ? 40000 : 100000;
-  const creditsPurchased = usageData?.credits_purchased || defaultCredits;
-  const creditsUsed = creditsPurchased - creditsBalance;
+  // Get credit usage from Autumn
+  const autumnUsage = await getAutumnUsage(user.id);
+  const creditsBalance = autumnUsage.balance;
+  const creditsUsed = autumnUsage.used;
+  const creditsPurchased = autumnUsage.limit;
   const percentageUsed = creditsPurchased > 0 ? (creditsUsed / creditsPurchased) * 100 : 0;
 
   // Check if credits are exhausted (less than 100 credits remaining)
@@ -240,43 +212,37 @@ export async function getBillingData() {
     .eq('id', user.id)
     .single();
 
-  // Get credit balance
-  const { data: balance } = await supabase.rpc('get_credit_balance', {
-    p_user_id: user.id
-  });
+  // Get credit usage from Autumn
+  const autumnUsage = await getAutumnUsage(user.id);
+  const creditsBalance = autumnUsage.balance;
+  const creditsUsed = autumnUsage.used;
+  const creditsPurchased = autumnUsage.limit;
 
-  const creditsBalance = balance || 0;
-
-  // Get current month usage data
-  const currentMonth = new Date();
-  currentMonth.setDate(1);
-  currentMonth.setHours(0, 0, 0, 0);
-
-  const { data: usage } = await supabase
-    .from('usage_tracking')
-    .select('credits_purchased, total_input_tokens, total_output_tokens, video_count')
-    .eq('user_id', user.id)
-    .eq('month', currentMonth.toISOString().split('T')[0])
-    .single();
+  // Get subscription info from Autumn
+  const subscription = await getAutumnSubscription(user.id);
+  const tier = subscription?.productId === 'spottr_pro' ? 'pro' :
+               subscription?.productId === 'spottr_enterprise' ? 'enterprise' : 'free';
 
   // Calculate next billing date (first of next month)
   const nextBilling = new Date();
   nextBilling.setMonth(nextBilling.getMonth() + 1);
   nextBilling.setDate(1);
 
-  // Get tier and determine default credits
-  const tier = userProfile?.subscription_tier || 'free';
-  const defaultCredits = tier === 'free' ? 1000 : tier === 'pro' ? 40000 : 100000;
-  const creditsPurchased = usage?.credits_purchased || defaultCredits;
-  const creditsUsed = creditsPurchased - creditsBalance;
+  // Get token usage from database (still tracked there for now)
+  const currentMonth = new Date();
+  currentMonth.setDate(1);
+  currentMonth.setHours(0, 0, 0, 0);
 
-  // Get recent credit transactions
-  const { data: recentTransactions } = await supabase
-    .from('credit_transactions')
-    .select('*')
+  const { data: usage } = await supabase
+    .from('usage_tracking')
+    .select('total_input_tokens, total_output_tokens, video_count')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
+    .eq('month', currentMonth.toISOString().split('T')[0])
+    .single();
+
+  // For now, return empty transactions since they're in Autumn
+  // TODO: Fetch from Autumn API when available
+  const recentTransactions: any[] = [];
 
   // Calculate value metrics
   const valueMetrics = calculateValueMetrics(creditsBalance);

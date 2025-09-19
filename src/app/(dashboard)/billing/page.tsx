@@ -127,11 +127,6 @@ export default async function BillingPage() {
             </Button>
           </div>
 
-          {!user.stripeCustomerId && (
-            <p className="text-sm text-muted-fg mt-4">
-              Note: Payment processing is not yet enabled. All features are currently available for testing.
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -185,8 +180,8 @@ export default async function BillingPage() {
                 <p className="text-xs text-center text-muted-fg mb-4">
                   {pkg.value}
                 </p>
-                <Button className="w-full" disabled={!user.stripeCustomerId}>
-                  {!user.stripeCustomerId ? 'Coming Soon' : 'Purchase'}
+                <Button className="w-full" disabled>
+                  Purchase (Coming Soon)
                 </Button>
               </CardContent>
             </Card>
@@ -253,23 +248,6 @@ export default async function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Stripe Integration Notice */}
-      {!user.stripeCustomerId && (
-        <Card className="mt-8 border-yellow-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-bold mb-2">Payment Processing Coming Soon</h3>
-                <p className="text-sm text-muted-fg">
-                  Stripe integration is not yet active. You're currently on the free tier with all features
-                  unlocked for testing. Payment processing will be enabled in a future update.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

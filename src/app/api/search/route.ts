@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
-import { calculateCredits, checkSufficientCredits } from '@/lib/credit-utils';
+import { calculateCredits } from '@/lib/credit-utils';
+import { checkAutumnCredits, trackAutumnCredits } from '@/lib/autumn/credits';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!
@@ -275,24 +276,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check credit balance before searching
-    const { data: balance } = await supabase.rpc('get_credit_balance', {
-      p_user_id: user.id
-    });
+    // Check credit balance via Autumn before searching
+    // Estimate: ~10 credits per search (rough estimate)
+    const estimatedCredits = 10;
 
-    const { canProceed, estimatedCredits, message } = checkSufficientCredits(
-      balance || 0,
-      'search',
-      video.duration_seconds ? video.duration_seconds / 60 : undefined
-    );
+    const creditCheck = await checkAutumnCredits(user.id, estimatedCredits);
 
-    if (!canProceed) {
+    if (!creditCheck.allowed) {
       return NextResponse.json({
-        error: message || 'Insufficient credits',
-        balance: balance,
+        error: creditCheck.message || 'Insufficient credits',
+        balance: creditCheck.balance,
         required: estimatedCredits
       }, { status: 402 });
     }
+
+    console.log(`💳 Credit check passed. Balance: ${creditCheck.balance}, Estimated usage: ${estimatedCredits}`);
 
     // Call GPT-5 nano for intelligent search
     const searchResults = await searchWithGPT5(
@@ -305,19 +303,19 @@ export async function POST(request: NextRequest) {
     if (searchResults.tokens) {
       const creditsUsed = calculateCredits(searchResults.tokens.input, searchResults.tokens.output);
 
-      // Deduct credits
-      const { data: creditResult, error: creditError } = await supabase.rpc('deduct_credits', {
-        p_user_id: user.id,
-        p_credits: creditsUsed,
-        p_input_tokens: searchResults.tokens.input,
-        p_output_tokens: searchResults.tokens.output,
-        p_operation: 'search',
-        p_video_id: videoId,
-        p_description: `Search query: "${query}" on ${video.filename || 'video'}`
+      // Track credits with Autumn
+      const trackResult = await trackAutumnCredits(user.id, creditsUsed, {
+        operation: 'search',
+        videoId: videoId,
+        description: `Search query: "${query}" on ${video.filename || 'video'}`,
+        inputTokens: searchResults.tokens.input,
+        outputTokens: searchResults.tokens.output
       });
 
-      if (creditError || (creditResult && !creditResult.success)) {
-        console.error('Failed to deduct credits:', creditError || creditResult?.error);
+      if (!trackResult.success) {
+        console.error('Failed to track credits with Autumn:', trackResult.error);
+      } else {
+        console.log(`💳 Credits tracked successfully with Autumn: ${creditsUsed} credits`);
       }
 
       // Log search to database

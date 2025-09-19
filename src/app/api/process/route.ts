@@ -5,7 +5,8 @@ import OpenAI from 'openai';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { calculateImageTokens, calculateCost, getModelName, type ModelName } from '@/lib/token-utils';
-import { calculateCredits, calculateOurCost, checkSufficientCredits } from '@/lib/credit-utils';
+import { calculateCredits, calculateOurCost } from '@/lib/credit-utils';
+import { checkAutumnCredits, trackAutumnCredits } from '@/lib/autumn/credits';
 
 // Configuration flags
 const SAVE_DEBUG_GRIDS = false; // Set to true to save debug grids (not needed for analysis)
@@ -666,23 +667,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Check credit balance
-    const { data: balance } = await supabase.rpc('get_credit_balance', {
-      p_user_id: user.id
-    });
+    // Check credit balance via Autumn
+    // Estimate: ~100 credits per minute of video (rough estimate for checking)
+    const estimatedMinutes = video.duration_seconds ? video.duration_seconds / 60 : 5;
+    const estimatedCredits = Math.ceil(estimatedMinutes * 100);
 
-    const { canProceed, estimatedCredits, message } = checkSufficientCredits(
-      balance || 0,
-      'process'
-    );
+    const creditCheck = await checkAutumnCredits(user.id, estimatedCredits);
 
-    if (!canProceed) {
+    if (!creditCheck.allowed) {
       return NextResponse.json({
-        error: message || 'Insufficient credits',
-        balance: balance,
+        error: creditCheck.message || 'Insufficient credits',
+        balance: creditCheck.balance,
         required: estimatedCredits
       }, { status: 402 });
     }
+
+    console.log(`💳 Credit check passed. Balance: ${creditCheck.balance}, Estimated usage: ${estimatedCredits}`);
 
     console.log('\n📊 === VIDEO DETAILS ===');
     console.log(`🎯 Accuracy Level: ${video.accuracy_level}`);
@@ -793,22 +793,20 @@ export async function POST(request: NextRequest) {
     console.log(`⏰ Completed at: ${new Date().toISOString()}`);
     console.log('================================\n');
 
-    // Deduct credits from user balance
-    const { data: creditResult, error: creditError } = await supabase.rpc('deduct_credits', {
-      p_user_id: video.user_id,
-      p_credits: creditsUsed,
-      p_input_tokens: tokenTotals.inputTokens,
-      p_output_tokens: tokenTotals.outputTokens,
-      p_operation: 'process',
-      p_video_id: videoId,
-      p_description: `Processed ${frames.length} frames from ${video.filename}`
+    // Track credits with Autumn
+    const trackResult = await trackAutumnCredits(user.id, creditsUsed, {
+      operation: 'process',
+      videoId: videoId,
+      description: `Processed ${frames.length} frames from ${video.filename}`,
+      inputTokens: tokenTotals.inputTokens,
+      outputTokens: tokenTotals.outputTokens
     });
 
-    if (creditError || (creditResult && !creditResult.success)) {
-      console.error('Failed to deduct credits:', creditError || creditResult?.error);
+    if (!trackResult.success) {
+      console.error('Failed to track credits with Autumn:', trackResult.error);
       // Note: Video already processed, so we log but don't fail the request
-    } else if (creditResult) {
-      console.log(`💳 Credits deducted successfully. New balance: ${creditResult.balance}`);
+    } else {
+      console.log(`💳 Credits tracked successfully with Autumn: ${creditsUsed} credits`);
     }
 
     // Clean up temp files (keep original if it's stored locally)
