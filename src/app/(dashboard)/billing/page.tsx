@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { CreditCard, TrendingUp, Calendar, Check, AlertCircle, FileVideo, Coins, Plus, Minus } from 'lucide-react';
 import { getBillingData } from '../actions';
 import { formatDate, formatDuration, formatRelativeTime } from '@/lib/utils';
+import { BillingActions, PurchaseCreditsButton, UpgradeButton } from './billing-actions';
 
 export default async function BillingPage() {
   // Fetch real billing data
@@ -33,11 +34,11 @@ export default async function BillingPage() {
     current: true,
   };
 
-  // Additional credit packages
+  // Additional credit packages with Autumn product IDs
   const creditPackages = [
-    { credits: 10000, price: 10, value: '~10 hours of video' },
-    { credits: 50000, price: 45, value: '~50 hours of video' },
-    { credits: 100000, price: 85, value: '~100 hours of video' },
+    { credits: 10000, price: 10, value: '~10 hours of video', productId: 'credits_10k' },
+    { credits: 50000, price: 45, value: '~50 hours of video', productId: 'credits_50k' },
+    { credits: 100000, price: 85, value: '~100 hours of video', productId: 'credits_100k' },
   ];
 
   return (
@@ -117,15 +118,7 @@ export default async function BillingPage() {
             </div>
           </div>
 
-          <div className="flex gap-4">
-            <Button variant="outline" disabled>
-              <CreditCard className="w-4 h-4 mr-2" />
-              Update Payment Method
-            </Button>
-            <Button variant="outline" disabled>
-              Cancel Subscription
-            </Button>
-          </div>
+          <BillingActions />
 
         </CardContent>
       </Card>
@@ -160,6 +153,28 @@ export default async function BillingPage() {
         </Card>
       </div>
 
+      {/* Upgrade to Pro if user is on free tier */}
+      {currentPlan.name !== 'Pro' && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold uppercase mb-4">Upgrade Your Plan</h2>
+          <Card className="border-4 border-green-500">
+            <CardContent className="p-6">
+              <h3 className="text-xl font-bold uppercase mb-2">Pro Plan</h3>
+              <p className="text-3xl font-bold mb-4">
+                $29<span className="text-sm font-normal">/mo</span>
+              </p>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-start">
+                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span className="font-mono text-sm">40,000 credits monthly</span>
+                </div>
+              </div>
+              <UpgradeButton planName="Pro" productId="spottr_pro" />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Additional Credits */}
       <div className="mb-8">
         <h2 className="text-xl font-bold uppercase mb-4">Purchase Additional Credits</h2>
@@ -180,9 +195,11 @@ export default async function BillingPage() {
                 <p className="text-xs text-center text-muted-fg mb-4">
                   {pkg.value}
                 </p>
-                <Button className="w-full" disabled>
-                  Purchase (Coming Soon)
-                </Button>
+                <PurchaseCreditsButton
+                  credits={pkg.credits}
+                  price={pkg.price}
+                  productId={pkg.productId}
+                />
               </CardContent>
             </Card>
           ))}
