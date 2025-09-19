@@ -1,17 +1,23 @@
-// Autumn credit utilities
-import { calculateCredits as calculateCreditsFromTokens } from '@/lib/credit-utils';
+// Server-side Autumn credit utilities
+// These are used by API routes to check and track credit usage
 
-// Check if user has sufficient credits via Autumn
+const AUTUMN_BACKEND_URL = process.env.AUTUMN_BACKEND_URL || 'https://api.useautumn.com';
+const AUTUMN_SECRET_KEY = process.env.AUTUMN_SECRET_KEY;
+
+// Check if user has sufficient credits
 export async function checkAutumnCredits(
-  customerId: string,
+  userId: string,
   requiredCredits: number
 ): Promise<{ allowed: boolean; balance: number; message?: string }> {
   try {
-    const response = await fetch('/api/autumn/check', {
+    const response = await fetch(`${AUTUMN_BACKEND_URL}/check`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTUMN_SECRET_KEY}`
+      },
       body: JSON.stringify({
-        customerId,
+        customerId: userId,
         featureId: 'credits',
         value: requiredCredits
       })
@@ -20,8 +26,8 @@ export async function checkAutumnCredits(
     const data = await response.json();
 
     return {
-      allowed: data.allowed,
-      balance: data.balance || 0,
+      allowed: data.allowed || false,
+      balance: data.remaining || 0,
       message: data.message
     };
   } catch (error) {
@@ -34,9 +40,9 @@ export async function checkAutumnCredits(
   }
 }
 
-// Track credit usage via Autumn
+// Track credit usage
 export async function trackAutumnCredits(
-  customerId: string,
+  userId: string,
   creditsUsed: number,
   metadata?: {
     operation: string;
@@ -47,11 +53,14 @@ export async function trackAutumnCredits(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('/api/autumn/track', {
+    const response = await fetch(`${AUTUMN_BACKEND_URL}/track`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTUMN_SECRET_KEY}`
+      },
       body: JSON.stringify({
-        customerId,
+        customerId: userId,
         featureId: 'credits',
         value: creditsUsed,
         metadata
@@ -73,14 +82,18 @@ export async function trackAutumnCredits(
   }
 }
 
-// Get current credit balance from Autumn
-export async function getAutumnBalance(customerId: string): Promise<number> {
+// Get current credit balance (uses custom balance route)
+export async function getAutumnBalance(userId: string): Promise<number> {
   try {
     const response = await fetch('/api/autumn/balance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerId })
+      body: JSON.stringify({ customerId: userId })
     });
+
+    if (!response.ok) {
+      return 0;
+    }
 
     const data = await response.json();
     return data.balance || 0;
