@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, Coins, CheckCircle, Upload, Search, AlertCircle, PlayCircle, Sparkles } from 'lucide-react';
+import { Video, Coins, CheckCircle, Upload, AlertCircle, PlayCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { getDashboardStats, getRecentVideos, getDemoVideo } from '../actions';
 import { formatDuration, formatRelativeTime } from '@/lib/utils';
@@ -145,8 +145,8 @@ export default async function DashboardPage() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card className="brutal-shadow">
+      <div className="mb-8">
+        <Card className="brutal-shadow max-w-md">
           <CardContent className="p-8">
             <Upload className="w-12 h-12 mb-4" />
             <h3 className="text-xl font-bold uppercase mb-2">Upload New Video</h3>
@@ -156,21 +156,6 @@ export default async function DashboardPage() {
             <Link href="/upload">
               <Button className="brutal-shadow">
                 Upload Video
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="brutal-shadow">
-          <CardContent className="p-8">
-            <Search className="w-12 h-12 mb-4" />
-            <h3 className="text-xl font-bold uppercase mb-2">Search Videos</h3>
-            <p className="font-mono text-sm text-muted-fg mb-4">
-              Find specific moments in your processed videos
-            </p>
-            <Link href="/search">
-              <Button variant="secondary" className="brutal-shadow">
-                Start Searching
               </Button>
             </Link>
           </CardContent>
