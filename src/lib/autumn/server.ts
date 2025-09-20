@@ -54,7 +54,9 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
     // Extract balance information
     const balance = result?.balance || 1000;
     const limit = result?.limit || 1000;
-    const used = limit - balance;
+    // Used should be provided by Autumn or default to 0
+    // We cannot calculate it from limit - balance as balance can exceed limit with credit purchases
+    const used = result?.used || 0;
 
     return {
       balance: balance,
