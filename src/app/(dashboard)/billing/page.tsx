@@ -25,7 +25,7 @@ export default async function BillingPage() {
     credits: 40000,
     models: ['GPT-5 Nano'],
     features: [
-      '40,000 credits monthly (~40 hours of video)',
+      '40,000 credits monthly',
       'Advanced search capabilities',
       'Custom frame intervals',
       'Priority processing',
@@ -36,9 +36,9 @@ export default async function BillingPage() {
 
   // Additional credit packages with Autumn product IDs
   const creditPackages = [
-    { credits: 10000, price: 10, value: '~10 hours of video', productId: 'credits_10k' },
-    { credits: 50000, price: 45, value: '~50 hours of video', productId: 'credits_50k' },
-    { credits: 100000, price: 80, value: '~100 hours of video', productId: 'credits_100k' },
+    { credits: 10000, price: 10, productId: 'credits_10k' },
+    { credits: 50000, price: 45, productId: 'credits_50k' },
+    { credits: 100000, price: 80, productId: 'credits_100k' },
   ];
 
   return (
@@ -191,9 +191,6 @@ export default async function BillingPage() {
                 </div>
                 <p className="text-xl font-bold text-center mb-2">
                   ${pkg.price}
-                </p>
-                <p className="text-xs text-center text-muted-fg mb-4">
-                  {pkg.value}
                 </p>
                 <PurchaseCreditsButton
                   credits={pkg.credits}

@@ -16,9 +16,9 @@ const CUSTOMER_PRICING = {
 const CREDIT_VALUE = 0.001;
 
 // Fixed monthly allocation by tier
-const FREE_TIER_CREDITS = 1000;  // ~1 hour of video or ~30 searches
-const PRO_TIER_CREDITS = 40000;  // ~40 hours of video or ~1,300 searches
-const ENTERPRISE_TIER_CREDITS = 100000; // ~100 hours of video or ~3,300 searches
+const FREE_TIER_CREDITS = 1000;
+const PRO_TIER_CREDITS = 40000;
+const ENTERPRISE_TIER_CREDITS = 100000;
 
 /**
  * Calculate credits from token usage with exact 10x markup
@@ -134,29 +134,16 @@ export function getTierCredits(tier: 'free' | 'pro' | 'enterprise'): number {
 }
 
 /**
- * Calculate value proposition metrics
- * Shows what users can do with their credits
+ * Calculate value metrics
  * @param credits Number of credits
- * @returns Object with equivalent video hours and searches
+ * @returns Object with dollar value
  */
 export function calculateValueMetrics(credits: number): {
-  videoHours: number;
-  videoMinutes: number;
-  searches: number;
   dollarValue: number;
 } {
-  // Based on actual usage:
-  // - 1 hour of video ≈ 1,000 credits (varies 900-1,100)
-  // - 1 search ≈ 30 credits (varies 25-35)
-  const videoHours = credits / 1000;
-  const videoMinutes = videoHours * 60;
-  const searches = credits / 30;
   const dollarValue = credits * CREDIT_VALUE;
 
   return {
-    videoHours: Math.floor(videoHours * 10) / 10, // Round to 1 decimal
-    videoMinutes: Math.floor(videoMinutes),
-    searches: Math.floor(searches),
     dollarValue: Math.round(dollarValue * 100) / 100 // Round to cents
   };
 }
@@ -196,21 +183,15 @@ export function checkSufficientCredits(
 }
 
 /**
- * Format remaining credits as time/searches
+ * Format remaining credits
  * @param credits Number of credits
  * @returns Human-readable string
  */
 export function formatRemainingCredits(credits: number): string {
-  const metrics = calculateValueMetrics(credits);
-
   if (credits === 0) {
     return 'No credits remaining';
-  } else if (credits < 30) {
-    return `${credits} credits remaining`;
-  } else if (credits < 1000) {
-    return `~${metrics.searches} searches remaining`;
   } else {
-    return `~${metrics.videoHours} video hours remaining`;
+    return `${credits.toLocaleString()} credits remaining`;
   }
 }
 

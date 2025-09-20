@@ -32,8 +32,7 @@ interface SidebarClientProps {
     percentageUsed: number;
     isExceeded: boolean;
     valueMetrics: {
-      videoHours: number;
-      searches: number;
+      dollarValue: number;
     };
   };
 }

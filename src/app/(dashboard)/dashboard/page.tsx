@@ -80,12 +80,6 @@ export default async function DashboardPage() {
                 />
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
-              <p className="font-mono text-xs uppercase text-muted-fg mb-1">Equivalent to:</p>
-              <p className="text-sm font-medium">
-                ~{stats.valueMetrics.videoHours} video hours OR ~{stats.valueMetrics.searches} searches
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
