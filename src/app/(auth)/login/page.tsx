@@ -9,6 +9,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
+import { GoogleSignInButton } from '@/components/google-signin-button';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -108,6 +109,17 @@ function LoginForm() {
 
         <SubmitButton />
       </form>
+
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t-2 border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-bg px-2 text-muted-fg font-mono">Or</span>
+        </div>
+      </div>
+
+      <GoogleSignInButton />
 
       <div className="mt-8 pt-8 border-t-2 border-border text-center">
         <p className="font-mono text-sm">
