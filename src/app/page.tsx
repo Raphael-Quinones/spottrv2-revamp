@@ -98,7 +98,7 @@ export default function LandingPage() {
                 <p className="text-4xl font-bold mb-4">$0</p>
                 <p className="font-mono text-sm mb-6">Perfect for trying out</p>
                 <ul className="space-y-2 font-mono text-sm mb-8">
-                  <li>• 10 minutes/month</li>
+                  <li>• 1,000 credits/month</li>
                   <li>• GPT-5 Nano</li>
                   <li>• Basic support</li>
                 </ul>
@@ -114,7 +114,7 @@ export default function LandingPage() {
                 <p className="text-4xl font-bold mb-4">$29</p>
                 <p className="font-mono text-sm mb-6">For professionals</p>
                 <ul className="space-y-2 font-mono text-sm mb-8">
-                  <li>• 100 minutes/month</li>
+                  <li>• 40,000 credits/month</li>
                   <li>• All AI models</li>
                   <li>• Priority support</li>
                 </ul>
@@ -130,7 +130,7 @@ export default function LandingPage() {
                 <p className="text-4xl font-bold mb-4">Custom</p>
                 <p className="font-mono text-sm mb-6">For teams</p>
                 <ul className="space-y-2 font-mono text-sm mb-8">
-                  <li>• Unlimited minutes</li>
+                  <li>• Unlimited credits</li>
                   <li>• All AI models</li>
                   <li>• Dedicated support</li>
                 </ul>
