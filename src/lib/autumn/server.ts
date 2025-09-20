@@ -1,5 +1,5 @@
 // Server-side Autumn utilities
-import { createClient } from '@/lib/supabase/server';
+// Direct API calls to Autumn since autumn-js package has Next.js 14 compatibility issues
 
 interface AutumnUsage {
   balance: number;
@@ -8,47 +8,59 @@ interface AutumnUsage {
   tier?: string;
 }
 
+// Helper to call Autumn API directly
+async function callAutumnAPI(endpoint: string, body: any) {
+  const response = await fetch(`https://api.useautumn.com/v1${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.AUTUMN_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    console.error(`Autumn API error: ${response.status} ${response.statusText}`);
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to parse Autumn API response:', error);
+    return null;
+  }
+}
+
 // Get credit usage from Autumn (server-side)
 export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
   try {
-    // Use the /check endpoint which is provided by autumnHandler
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-    const response = await fetch(`${baseUrl}/api/autumn/check`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customer_id: userId,
-        feature_id: 'credits',
-        with_preview: true
-      })
+    // Call Autumn API directly
+    const result = await callAutumnAPI('/check', {
+      customer_id: userId,
+      feature_id: 'credits',
+      with_preview: true
     });
 
-    if (!response.ok) {
-      console.error('Autumn check error:', response.status);
-      // Return default values if Autumn is not configured
+    if (!result) {
       return {
-        balance: 1000, // Default free tier
+        balance: 1000,
         used: 0,
         limit: 1000,
         tier: 'free'
       };
     }
 
-    const data = await response.json();
-
-    // The /check endpoint returns balance info in the balance field
-    const balance = data.balance?.balance || 1000;
-    const limit = 1000; // Default, can be updated based on tier
+    // Extract balance information
+    const balance = result?.balance || 1000;
+    const limit = result?.limit || 1000;
     const used = limit - balance;
 
     return {
       balance: balance,
       used: used,
       limit: limit,
-      tier: 'free' // Can be determined from product_preview if needed
+      tier: result?.tier || 'free'
     };
   } catch (error) {
     console.error('Error getting Autumn usage:', error);
@@ -65,26 +77,13 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
 // Get subscription info from Autumn
 export async function getAutumnSubscription(userId: string) {
   try {
-    // Use the /query endpoint to get customer data
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-    const response = await fetch(`${baseUrl}/api/autumn/query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customer_id: userId
-      })
+    // Query customer data directly from Autumn
+    const result = await callAutumnAPI('/query', {
+      customer_id: userId
     });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
     // Extract subscription/product info from the query response
-    return data.subscription || null;
+    return result?.subscription || null;
   } catch (error) {
     console.error('Error getting Autumn subscription:', error);
     return null;

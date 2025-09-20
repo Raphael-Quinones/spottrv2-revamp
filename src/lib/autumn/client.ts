@@ -32,7 +32,7 @@ interface AutumnResponse<T = any> {
 // Checkout creates a Stripe checkout session for purchasing products
 export async function checkout(params: CheckoutParams): Promise<AutumnResponse> {
   try {
-    const response = await fetch('/api/autumn/checkout', {
+    const response = await fetch('/api/autumn/attach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -44,9 +44,10 @@ export async function checkout(params: CheckoutParams): Promise<AutumnResponse> 
 
     const data = await response.json();
 
-    if (data.checkout_url) {
+    // Autumn returns 'url' for checkout sessions
+    if (data.url) {
       // Redirect to Stripe checkout
-      window.location.href = data.checkout_url;
+      window.location.href = data.url;
       return { data };
     }
 

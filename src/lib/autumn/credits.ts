@@ -1,8 +1,31 @@
 // Server-side Autumn credit utilities
 // These are used by API routes to check and track credit usage
+// Direct API calls to Autumn since autumn-js package has Next.js 14 compatibility issues
 
-const AUTUMN_BACKEND_URL = process.env.AUTUMN_BACKEND_URL || 'https://api.useautumn.com';
-const AUTUMN_SECRET_KEY = process.env.AUTUMN_SECRET_KEY;
+// Helper to call Autumn API directly
+async function callAutumnAPI(endpoint: string, body: any) {
+  const response = await fetch(`https://api.useautumn.com/v1${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.AUTUMN_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    console.error(`Autumn API error (${response.status}) at ${endpoint}`);
+    return { data: null, ok: false, status: response.status };
+  }
+
+  try {
+    const data = await response.json();
+    return { data, ok: true, status: response.status };
+  } catch (error) {
+    console.error('Failed to parse Autumn API response:', error);
+    return { data: null, ok: false, status: response.status };
+  }
+}
 
 // Check if user has sufficient credits
 export async function checkAutumnCredits(
@@ -10,25 +33,16 @@ export async function checkAutumnCredits(
   requiredCredits: number
 ): Promise<{ allowed: boolean; balance: number; message?: string }> {
   try {
-    const response = await fetch(`${AUTUMN_BACKEND_URL}/check`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AUTUMN_SECRET_KEY}`
-      },
-      body: JSON.stringify({
-        customerId: userId,
-        featureId: 'credits',
-        value: requiredCredits
-      })
+    const { data, ok } = await callAutumnAPI('/check', {
+      customer_id: userId,
+      feature_id: 'credits',
+      value: requiredCredits
     });
 
-    const data = await response.json();
-
     return {
-      allowed: data.allowed || false,
-      balance: data.remaining || 0,
-      message: data.message
+      allowed: data?.allowed || false,
+      balance: data?.remaining || 0,
+      message: data?.message
     };
   } catch (error) {
     console.error('Error checking Autumn credits:', error);
@@ -53,23 +67,15 @@ export async function trackAutumnCredits(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${AUTUMN_BACKEND_URL}/track`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AUTUMN_SECRET_KEY}`
-      },
-      body: JSON.stringify({
-        customerId: userId,
-        featureId: 'credits',
-        value: creditsUsed,
-        metadata
-      })
+    const { data, ok } = await callAutumnAPI('/track', {
+      customer_id: userId,
+      feature_id: 'credits',
+      value: creditsUsed,
+      metadata
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      return { success: false, error };
+    if (!ok || data?.error) {
+      return { success: false, error: data?.error?.message || 'Failed to track credits' };
     }
 
     return { success: true };
@@ -82,21 +88,15 @@ export async function trackAutumnCredits(
   }
 }
 
-// Get current credit balance (uses custom balance route)
+// Get current credit balance
 export async function getAutumnBalance(userId: string): Promise<number> {
   try {
-    const response = await fetch('/api/autumn/balance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerId: userId })
+    const { data } = await callAutumnAPI('/check', {
+      customer_id: userId,
+      feature_id: 'credits'
     });
 
-    if (!response.ok) {
-      return 0;
-    }
-
-    const data = await response.json();
-    return data.balance || 0;
+    return data?.balance || 0;
   } catch (error) {
     console.error('Error getting Autumn balance:', error);
     return 0;
