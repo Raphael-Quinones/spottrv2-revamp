@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Menu, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Bell, Menu, User, LogOut, ChevronDown } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from './theme-toggle';
 import { createClient } from '@/lib/supabase/client';
@@ -118,14 +118,6 @@ export function Navbar() {
                         <p className="text-sm font-mono text-muted-fg">Signed in as</p>
                         <p className="text-sm font-bold truncate">{user.email}</p>
                       </div>
-                      <Link
-                        href="/settings"
-                        className="flex items-center space-x-2 px-4 py-2 text-sm font-mono hover:bg-fg hover:text-bg transition-colors"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span>Settings</span>
-                      </Link>
                       <button
                         onClick={handleSignOut}
                         className="flex items-center space-x-2 px-4 py-2 text-sm font-mono hover:bg-fg hover:text-bg transition-colors w-full text-left"

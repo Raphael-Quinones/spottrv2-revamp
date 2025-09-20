@@ -8,7 +8,6 @@ import {
   Upload,
   Video,
   Search,
-  Settings,
   CreditCard,
   Clock,
   BarChart3,
@@ -21,7 +20,6 @@ const sidebarItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/upload', label: 'Upload', icon: Upload },
   { href: '/videos', label: 'Videos', icon: Video },
-  { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/billing', label: 'Billing', icon: CreditCard },
 ];
 
