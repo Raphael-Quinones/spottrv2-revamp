@@ -240,7 +240,7 @@ export default function UploadPage() {
               disabled={!canUpload}
             />
             <p className="font-mono text-xs text-muted-fg mt-2">
-              Be specific about what you want to find in the video. We'll analyze frames every 10 seconds using GPT-5 Nano.
+              Be specific about what you want to find in the video. We'll analyze frames every 10 seconds.
             </p>
           </div>
         </CardContent>

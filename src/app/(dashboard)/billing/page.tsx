@@ -23,7 +23,7 @@ export default async function BillingPage() {
     name: 'Pro',
     price: 29.00,
     credits: 40000,
-    models: ['GPT-5 Nano'],
+    models: ['Standard'],
     features: [
       '40,000 credits monthly',
       'Advanced search capabilities',
