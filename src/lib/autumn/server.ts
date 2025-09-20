@@ -11,23 +11,23 @@ interface AutumnUsage {
 // Get credit usage from Autumn (server-side)
 export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
   try {
-    // Check if we have AUTUMN_BACKEND_URL configured
-    const backendUrl = process.env.AUTUMN_BACKEND_URL || 'https://api.useautumn.com';
+    // Use the /check endpoint which is provided by autumnHandler
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    const response = await fetch(`${backendUrl}/usage`, {
+    const response = await fetch(`${baseUrl}/api/autumn/check`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AUTUMN_SECRET_KEY}`
       },
       body: JSON.stringify({
-        customerId: userId,
-        featureId: 'credits'
+        customer_id: userId,
+        feature_id: 'credits',
+        with_preview: true
       })
     });
 
     if (!response.ok) {
-      console.error('Autumn API error:', response.status, await response.text());
+      console.error('Autumn check error:', response.status);
       // Return default values if Autumn is not configured
       return {
         balance: 1000, // Default free tier
@@ -39,11 +39,16 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
 
     const data = await response.json();
 
+    // The /check endpoint returns balance info in the balance field
+    const balance = data.balance?.balance || 1000;
+    const limit = 1000; // Default, can be updated based on tier
+    const used = limit - balance;
+
     return {
-      balance: data.remaining || 0,
-      used: data.used || 0,
-      limit: data.limit || 0,
-      tier: data.tier || 'free'
+      balance: balance,
+      used: used,
+      limit: limit,
+      tier: 'free' // Can be determined from product_preview if needed
     };
   } catch (error) {
     console.error('Error getting Autumn usage:', error);
@@ -60,16 +65,16 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
 // Get subscription info from Autumn
 export async function getAutumnSubscription(userId: string) {
   try {
-    const backendUrl = process.env.AUTUMN_BACKEND_URL || 'https://api.useautumn.com';
+    // Use the /query endpoint to get customer data
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    const response = await fetch(`${backendUrl}/subscription`, {
+    const response = await fetch(`${baseUrl}/api/autumn/query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AUTUMN_SECRET_KEY}`
       },
       body: JSON.stringify({
-        customerId: userId
+        customer_id: userId
       })
     });
 
@@ -77,7 +82,9 @@ export async function getAutumnSubscription(userId: string) {
       return null;
     }
 
-    return await response.json();
+    const data = await response.json();
+    // Extract subscription/product info from the query response
+    return data.subscription || null;
   } catch (error) {
     console.error('Error getting Autumn subscription:', error);
     return null;

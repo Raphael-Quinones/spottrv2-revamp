@@ -26,10 +26,15 @@ const sidebarItems = [
 interface SidebarClientProps {
   processingVideos: any[];
   usage: {
-    minutesUsed: number;
-    minutesLimit: number;
+    creditsUsed: number;
+    creditsLimit: number;
+    creditsBalance: number;
     percentageUsed: number;
     isExceeded: boolean;
+    valueMetrics: {
+      videoHours: number;
+      searches: number;
+    };
   };
 }
 
@@ -124,11 +129,14 @@ export function SidebarClient({ processingVideos, usage }: SidebarClientProps) {
           </h2>
           <div className="space-y-2">
             <div>
-              <p className="font-mono text-xs uppercase">Minutes Used</p>
+              <p className="font-mono text-xs uppercase">Credits Used</p>
               <p className="font-bold text-lg">
-                {formatMinutes(usage.minutesUsed)} / {formatMinutes(usage.minutesLimit)}
+                {usage.creditsUsed.toLocaleString()} / {usage.creditsLimit.toLocaleString()}
               </p>
-              <div className="mt-1 h-2 bg-muted border border-border">
+              <p className="font-mono text-xs mt-1 text-muted-fg">
+                {usage.creditsBalance.toLocaleString()} credits remaining
+              </p>
+              <div className="mt-2 h-2 bg-muted border border-border">
                 <div
                   className={`h-full transition-all ${
                     usage.isExceeded ? 'bg-red-500' :

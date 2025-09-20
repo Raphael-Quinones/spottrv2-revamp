@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { SidebarClient } from './SidebarClient';
+import { getAutumnUsage } from '@/lib/autumn/server';
+import { calculateValueMetrics } from '@/lib/credit-utils';
 
 async function getSidebarData() {
   const supabase = await createClient();
@@ -10,10 +12,12 @@ async function getSidebarData() {
     return {
       processingVideos: [],
       usage: {
-        minutesUsed: 0,
-        minutesLimit: 10,
+        creditsUsed: 0,
+        creditsLimit: 1000,
+        creditsBalance: 1000,
         percentageUsed: 0,
         isExceeded: false,
+        valueMetrics: calculateValueMetrics(1000)
       }
     };
   }
@@ -27,40 +31,18 @@ async function getSidebarData() {
     .order('created_at', { ascending: true })
     .limit(5);
 
-  // Get current month for usage
-  const currentMonth = new Date();
-  currentMonth.setDate(1);
-  currentMonth.setHours(0, 0, 0, 0);
+  // Get credit usage from Autumn
+  const autumnUsage = await getAutumnUsage(user.id);
+  const valueMetrics = calculateValueMetrics(autumnUsage.balance);
 
-  // Try to create usage record if doesn't exist
-  try {
-    await supabase.rpc('get_or_create_usage_record', {
-      p_user_id: user.id
-    });
-  } catch (err) {
-    // Ignore error if record already exists
-  }
-
-  // Call the check_usage_limit function
-  const { data: usageData, error } = await supabase
-    .rpc('check_usage_limit', { p_user_id: user.id });
-
-  let usage = {
-    minutesUsed: 0,
-    minutesLimit: 10,
-    percentageUsed: 0,
-    isExceeded: false,
+  const usage = {
+    creditsUsed: autumnUsage.used,
+    creditsLimit: autumnUsage.limit,
+    creditsBalance: autumnUsage.balance,
+    percentageUsed: autumnUsage.limit > 0 ? (autumnUsage.used / autumnUsage.limit) * 100 : 0,
+    isExceeded: autumnUsage.balance <= 0,
+    valueMetrics
   };
-
-  if (!error && usageData?.[0]) {
-    const result = usageData[0];
-    usage = {
-      minutesUsed: Number(result.minutes_used) || 0,
-      minutesLimit: Number(result.minutes_limit) || 10,
-      percentageUsed: Number(result.percentage_used) || 0,
-      isExceeded: result.is_exceeded === true,
-    };
-  }
 
   return {
     processingVideos: processingVideos || [],
