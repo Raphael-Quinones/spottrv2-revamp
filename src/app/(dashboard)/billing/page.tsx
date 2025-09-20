@@ -17,23 +17,6 @@ export default async function BillingPage() {
     ? Math.min((currentPlan.creditsUsed / currentPlan.creditsPurchased) * 100, 100)
     : 0;
 
-  // Only Pro tier now
-  const plan = {
-    tier: 'pro',
-    name: 'Pro',
-    price: 29.00,
-    credits: 40000,
-    models: ['Standard'],
-    features: [
-      '40,000 credits monthly',
-      'Advanced search capabilities',
-      'Custom frame intervals',
-      'Priority processing',
-      'Email support'
-    ],
-    current: true,
-  };
-
   // Additional credit packages with Autumn product IDs
   const creditPackages = [
     { credits: 10000, price: 10, productId: 'credits_10k' },
@@ -126,12 +109,17 @@ export default async function BillingPage() {
       {/* Subscription Plan */}
       <div className="mb-8">
         <h2 className="text-xl font-bold uppercase mb-4">Subscription Plan</h2>
-        <Card className="border-4">
+        <Card className={currentPlan.tier === 'pro' ? 'border-4 border-green-500' : 'border-4'}>
           <CardContent className="p-6">
-            <Badge className="mb-4">Current Plan</Badge>
-            <h3 className="text-xl font-bold uppercase mb-2">{plan.name}</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Badge className={currentPlan.tier === 'pro' ? 'bg-green-500' : ''}>Current Plan</Badge>
+              {currentPlan.tier === 'pro' && (
+                <Badge variant="success">PRO MEMBER</Badge>
+              )}
+            </div>
+            <h3 className="text-xl font-bold uppercase mb-2">{currentPlan.name}</h3>
             <p className="text-3xl font-bold mb-4">
-              ${plan.price}
+              ${currentPlan.price}
               <span className="text-sm font-normal">/mo</span>
             </p>
 
@@ -139,22 +127,36 @@ export default async function BillingPage() {
               <div className="flex items-start">
                 <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
                 <span className="font-mono text-sm">
-                  {plan.credits.toLocaleString()} credits monthly
+                  {currentPlan.tier === 'pro' ? '40,000' : currentPlan.tier === 'enterprise' ? 'Unlimited' : '1,000'} credits monthly
                 </span>
               </div>
-              {plan.features.map((feature, index) => (
-                <div key={index} className="flex items-start">
-                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="font-mono text-sm">{feature}</span>
-                </div>
-              ))}
+              {currentPlan.tier === 'pro' && (
+                <>
+                  <div className="flex items-start">
+                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="font-mono text-sm">Advanced search capabilities</span>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="font-mono text-sm">Custom frame intervals</span>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="font-mono text-sm">Priority processing</span>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="font-mono text-sm">Email support</span>
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Upgrade to Pro if user is on free tier */}
-      {currentPlan.name !== 'Pro' && (
+      {currentPlan.tier !== 'pro' && currentPlan.tier !== 'enterprise' && (
         <div className="mb-8">
           <h2 className="text-xl font-bold uppercase mb-4">Upgrade Your Plan</h2>
           <Card className="border-4 border-green-500">

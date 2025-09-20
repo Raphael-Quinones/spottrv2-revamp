@@ -1,14 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Menu, User, LogOut, ChevronDown } from 'lucide-react';
+import { Bell, Menu, User, LogOut, ChevronDown, Crown } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from './theme-toggle';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { Badge } from '@/components/ui/badge';
 
-export function Navbar() {
+interface NavbarProps {
+  subscriptionTier?: string;
+}
+
+export function Navbar({ subscriptionTier = 'free' }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -61,12 +66,26 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-fg" />
-            <span className="text-2xl font-bold uppercase tracking-tighter">
-              Spottr
-            </span>
-          </Link>
+          <div className="flex items-center space-x-3">
+            <Link href="/" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-fg" />
+              <span className="text-2xl font-bold uppercase tracking-tighter">
+                Spottr
+              </span>
+            </Link>
+            {subscriptionTier === 'pro' && (
+              <Badge variant="success" className="hidden md:flex items-center">
+                <Crown className="w-3 h-3 mr-1" />
+                PRO
+              </Badge>
+            )}
+            {subscriptionTier === 'enterprise' && (
+              <Badge className="bg-purple-600 text-white hidden md:flex items-center">
+                <Crown className="w-3 h-3 mr-1" />
+                ENTERPRISE
+              </Badge>
+            )}
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -117,6 +136,22 @@ export function Navbar() {
                       <div className="px-4 py-3 border-b-2 border-border">
                         <p className="text-sm font-mono text-muted-fg">Signed in as</p>
                         <p className="text-sm font-bold truncate">{user.email}</p>
+                        {subscriptionTier === 'pro' && (
+                          <div className="mt-2">
+                            <Badge variant="success" className="text-xs">
+                              <Crown className="w-3 h-3 mr-1" />
+                              PRO MEMBER
+                            </Badge>
+                          </div>
+                        )}
+                        {subscriptionTier === 'enterprise' && (
+                          <div className="mt-2">
+                            <Badge className="bg-purple-600 text-white text-xs">
+                              <Crown className="w-3 h-3 mr-1" />
+                              ENTERPRISE
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                       <button
                         onClick={handleSignOut}

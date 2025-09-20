@@ -43,17 +43,20 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
     });
 
     if (!result) {
+      const defaultBalance = 1000;
       return {
-        balance: 1000,
+        balance: defaultBalance,
         used: 0,
-        limit: 1000,
+        limit: defaultBalance, // Use balance as limit for consistency
         tier: 'free'
       };
     }
 
     // Extract balance information
     const balance = result?.balance || 1000;
-    const limit = result?.limit || 1000;
+    // If limit is not provided by Autumn, use the balance as the limit
+    // This handles cases where users have purchased credits or have pro/enterprise tiers
+    const limit = result?.limit || balance;
     // Used should be provided by Autumn or default to 0
     // We cannot calculate it from limit - balance as balance can exceed limit with credit purchases
     const used = result?.used || 0;
@@ -67,10 +70,11 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
   } catch (error) {
     console.error('Error getting Autumn usage:', error);
     // Return default values if Autumn is not available
+    const defaultBalance = 1000;
     return {
-      balance: 1000,
+      balance: defaultBalance,
       used: 0,
-      limit: 1000,
+      limit: defaultBalance, // Use balance as limit for consistency
       tier: 'free'
     };
   }
