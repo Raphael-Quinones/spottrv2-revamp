@@ -3,6 +3,7 @@ import { Inter, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { AutumnProvider } from '@/lib/autumn/provider';
+import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,6 +32,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AutumnProvider>
             {children}
+            <Toaster />
           </AutumnProvider>
         </ThemeProvider>
       </body>

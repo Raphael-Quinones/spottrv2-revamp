@@ -114,7 +114,17 @@ export default async function BillingPage() {
             <div className="flex items-center gap-2 mb-4">
               <Badge className={currentPlan.tier === 'pro' ? 'bg-green-500' : ''}>Current Plan</Badge>
               {currentPlan.tier === 'pro' && (
-                <Badge variant="success">PRO MEMBER</Badge>
+                <Badge
+                  className="text-white font-bold"
+                  style={{
+                    background: 'linear-gradient(90deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 56%, #4b0082 70%, #9400d3 84%, #ff0000 100%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'rainbow-shift 4s linear infinite',
+                    textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 1px 0 #000, 1px 0 0 #000, 0 -1px 0 #000, -1px 0 0 #000'
+                  }}
+                >
+                  PRO MEMBER
+                </Badge>
               )}
             </div>
             <h3 className="text-xl font-bold uppercase mb-2">{currentPlan.name}</h3>

@@ -74,14 +74,22 @@ export function Navbar({ subscriptionTier = 'free' }: NavbarProps) {
               </span>
             </Link>
             {subscriptionTier === 'pro' && (
-              <Badge variant="success" className="hidden md:flex items-center">
-                <Crown className="w-3 h-3 mr-1" />
+              <Badge
+                className="hidden md:flex items-center text-white font-bold"
+                style={{
+                  background: 'linear-gradient(90deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 56%, #4b0082 70%, #9400d3 84%, #ff0000 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'rainbow-shift 4s linear infinite',
+                  textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 1px 0 #000, 1px 0 0 #000, 0 -1px 0 #000, -1px 0 0 #000'
+                }}
+              >
+                <Crown className="w-3 h-3 mr-1" style={{ filter: 'drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px 1px 0 #000)' }} />
                 PRO
               </Badge>
             )}
             {subscriptionTier === 'enterprise' && (
               <Badge className="bg-purple-600 text-white hidden md:flex items-center">
-                <Crown className="w-3 h-3 mr-1" />
+                <Crown className="w-3 h-3 mr-1" style={{ filter: 'drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px 1px 0 #000)' }} />
                 ENTERPRISE
               </Badge>
             )}
@@ -138,8 +146,16 @@ export function Navbar({ subscriptionTier = 'free' }: NavbarProps) {
                         <p className="text-sm font-bold truncate">{user.email}</p>
                         {subscriptionTier === 'pro' && (
                           <div className="mt-2">
-                            <Badge variant="success" className="text-xs">
-                              <Crown className="w-3 h-3 mr-1" />
+                            <Badge
+                              className="text-xs text-white font-bold"
+                              style={{
+                                background: 'linear-gradient(90deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 56%, #4b0082 70%, #9400d3 84%, #ff0000 100%)',
+                                backgroundSize: '200% 100%',
+                                animation: 'rainbow-shift 4s linear infinite',
+                                textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 1px 0 #000, 1px 0 0 #000, 0 -1px 0 #000, -1px 0 0 #000'
+                              }}
+                            >
+                              <Crown className="w-3 h-3 mr-1" style={{ filter: 'drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px 1px 0 #000)' }} />
                               PRO MEMBER
                             </Badge>
                           </div>
@@ -147,7 +163,7 @@ export function Navbar({ subscriptionTier = 'free' }: NavbarProps) {
                         {subscriptionTier === 'enterprise' && (
                           <div className="mt-2">
                             <Badge className="bg-purple-600 text-white text-xs">
-                              <Crown className="w-3 h-3 mr-1" />
+                              <Crown className="w-3 h-3 mr-1" style={{ filter: 'drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px 1px 0 #000)' }} />
                               ENTERPRISE
                             </Badge>
                           </div>

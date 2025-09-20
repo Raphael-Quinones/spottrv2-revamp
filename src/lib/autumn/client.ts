@@ -43,16 +43,26 @@ export async function checkout(params: CheckoutParams): Promise<AutumnResponse> 
     });
 
     const data = await response.json();
+    console.log('Checkout response:', data);
 
     // Handle both 'url' and 'checkout_url' fields
     const checkoutUrl = data.url || data.checkout_url;
     if (checkoutUrl) {
+      console.log('Redirecting to checkout URL:', checkoutUrl);
       // Redirect to Stripe checkout
       window.location.href = checkoutUrl;
       return { data };
     }
 
-    return data;
+    // No checkout URL means instant purchase completed (user has saved payment method)
+    console.log('Instant purchase completed');
+    return {
+      data: {
+        ...data,
+        instant_purchase: true,
+        success: true
+      }
+    };
   } catch (error) {
     console.error('Checkout error:', error);
     return {

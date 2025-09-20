@@ -74,4 +74,14 @@
   .skeleton-pulse {
     animation: brutalist-pulse 2s ease-in-out infinite;
   }
+
+  /* Rainbow gradient animation for PRO badge - continuous seamless loop */
+  @keyframes rainbow-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: -200% 50%;
+    }
+  }
 }

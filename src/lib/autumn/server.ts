@@ -65,7 +65,7 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
       balance: balance,
       used: used,
       limit: limit,
-      tier: result?.tier || 'free'
+      tier: 'free' // We'll determine tier from getAutumnSubscription
     };
   } catch (error) {
     console.error('Error getting Autumn usage:', error);
@@ -83,13 +83,41 @@ export async function getAutumnUsage(userId: string): Promise<AutumnUsage> {
 // Get subscription info from Autumn
 export async function getAutumnSubscription(userId: string) {
   try {
-    // Query customer data directly from Autumn
-    const result = await callAutumnAPI('/query', {
-      customer_id: userId
+    // Use the GET /customers/{customer_id} endpoint as per Autumn documentation
+    const response = await fetch(`https://api.useautumn.com/v1/customers/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.AUTUMN_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
     });
 
-    // Extract subscription/product info from the query response
-    return result?.subscription || null;
+    if (!response.ok) {
+      console.error(`Autumn GET customer API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const customerData = await response.json();
+    console.log('Autumn customer data for user', userId, ':', JSON.stringify(customerData, null, 2));
+
+    // Extract subscription/product info from the customer data
+    // The data comes in products array with active products
+    const activeProduct = customerData?.products?.find((p: any) => p.status === 'active') ||
+                         customerData?.products?.[0] ||
+                         null;
+
+    console.log('Extracted subscription from customer data:', activeProduct);
+
+    // Return in a format compatible with how we're checking it
+    if (activeProduct) {
+      return {
+        productId: activeProduct.id,
+        name: activeProduct.name,
+        status: activeProduct.status
+      };
+    }
+
+    return null;
   } catch (error) {
     console.error('Error getting Autumn subscription:', error);
     return null;

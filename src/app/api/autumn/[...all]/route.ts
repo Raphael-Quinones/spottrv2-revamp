@@ -21,16 +21,27 @@ async function handler(request: NextRequest) {
   let body = null;
   if (request.method === 'POST') {
     try {
-      body = await request.json();
-      // Auto-inject user details if not present
-      if (user && body) {
-        body.customer_id = body.customer_id || user.id;
-        body.customer_email = body.customer_email || user.email;
+      const text = await request.text();
+      if (text) {
+        body = JSON.parse(text);
+        // Auto-inject user details if not present
+        if (user && body) {
+          body.customer_id = body.customer_id || user.id;
+          body.customer_email = body.customer_email || user.email;
+        }
       }
     } catch {
       // No body or not JSON
     }
   }
+
+  // Log the request for debugging
+  console.log('Autumn API request:', {
+    path,
+    method: request.method,
+    body,
+    url: `https://api.useautumn.com/v1${path}${url.search}`
+  });
 
   // Forward to Autumn API
   const autumnResponse = await fetch(
@@ -48,6 +59,9 @@ async function handler(request: NextRequest) {
 
   // Return Autumn's response as-is
   const data = await autumnResponse.text();
+  console.log('Autumn API response status:', autumnResponse.status);
+  console.log('Autumn API response:', data.substring(0, 500)); // First 500 chars
+
   return new Response(data, {
     status: autumnResponse.status,
     headers: { 'Content-Type': 'application/json' }

@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import * as autumn from '@/lib/autumn/client';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export function BillingActions() {
   const [isLoading, setIsLoading] = useState(false);
@@ -74,16 +76,48 @@ export function PurchaseCreditsButton({
   productId: string;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
   const handlePurchase = async () => {
     setIsLoading(true);
     try {
-      await autumn.checkout({ productId });
+      const result = await autumn.checkout({ productId });
+
+      // Check if it was an instant purchase (user has saved payment method)
+      if (result.data?.instant_purchase) {
+        toast({
+          title: "✓ Credits Purchased Successfully!",
+          description: `${credits.toLocaleString()} credits have been added to your account.`,
+          variant: "success" as any,
+        });
+
+        // Refresh the page data after a short delay to show the toast
+        setTimeout(() => {
+          router.refresh();
+        }, 1500);
+      }
+      // If there's an error
+      else if (result.error) {
+        toast({
+          title: "Purchase Failed",
+          description: result.error.message || "Failed to purchase credits. Please try again.",
+          variant: "destructive",
+        });
+      }
+      // Otherwise, user will be redirected to Stripe checkout
     } catch (error) {
       console.error('Failed to start checkout:', error);
-      alert('Failed to start checkout. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to start checkout. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      // Only set loading to false if not redirecting
+      if (!window.location.href.includes('checkout.stripe.com')) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -96,7 +130,7 @@ export function PurchaseCreditsButton({
       {isLoading ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Loading...
+          Processing...
         </>
       ) : (
         `Purchase for $${price}`
@@ -107,16 +141,31 @@ export function PurchaseCreditsButton({
 
 export function UpgradeButton({ planName, productId }: { planName: string; productId: string }) {
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleUpgrade = async () => {
     setIsLoading(true);
     try {
-      await autumn.checkout({ productId });
+      const result = await autumn.checkout({ productId });
+
+      if (result.error) {
+        toast({
+          title: "Upgrade Failed",
+          description: result.error.message || "Failed to start upgrade. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Failed to start upgrade:', error);
-      alert('Failed to start upgrade. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to start upgrade. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      if (!window.location.href.includes('checkout.stripe.com')) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -129,7 +178,7 @@ export function UpgradeButton({ planName, productId }: { planName: string; produ
       {isLoading ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Loading...
+          Processing...
         </>
       ) : (
         `Upgrade to ${planName}`
