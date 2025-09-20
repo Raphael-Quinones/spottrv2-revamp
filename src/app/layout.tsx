@@ -17,8 +17,8 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Spottr - AI-Powered Video Analysis',
-  description: 'Find anything in your videos with AI-powered analysis',
+  title: 'Spottr - Ctrl+F for Videos',
+  description: 'Ctrl+F for Videos - Search and find anything in your videos instantly',
 };
 
 export default function RootLayout({

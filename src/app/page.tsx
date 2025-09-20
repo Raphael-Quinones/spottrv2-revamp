@@ -21,7 +21,7 @@ export default function LandingPage() {
               <span className="bg-fg text-bg px-4">In Your Videos</span>
             </h1>
             <p className="text-xl font-mono mb-8 text-muted-fg">
-              AI-powered video analysis that spots what matters
+              Ctrl+F for Videos - Search your videos like text
             </p>
             <div className="flex gap-4 justify-center">
               <Link href="/signup">
@@ -147,7 +147,7 @@ export default function LandingPage() {
       <footer className="border-t-4 border-border py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="font-mono text-sm uppercase text-muted-fg">
-            © 2024 Spottr. AI-Powered Video Analysis.
+            © 2025 Spottr. Ctrl+F for Videos.
           </p>
         </div>
       </footer>

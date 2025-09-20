@@ -1,7 +1,7 @@
-# Spottr - AI-Powered Video Analysis Platform
+# Spottr - Ctrl+F for Videos
 
 ## Project Overview
-Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to process and analyze video content based on user prompts. Users can upload videos, specify what they're looking for, and the system will identify and timestamp relevant moments.
+Spottr is a video analysis platform that uses OpenAI's GPT-5 vision models to process and analyze video content based on user prompts. Users can upload videos, specify what they're looking for, and the system will identify and timestamp relevant moments. Think of it as Ctrl+F for video content.
 
 ## Tech Stack
 - **Frontend**: Next.js 14 (App Router), TypeScript, React 18

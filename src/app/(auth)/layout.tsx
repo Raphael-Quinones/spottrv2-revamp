@@ -23,7 +23,7 @@ export default function AuthLayout({
         
         {/* Footer */}
         <p className="text-center mt-8 font-mono text-xs uppercase text-muted-fg">
-          AI-Powered Video Analysis Platform
+          Ctrl+F for Videos
         </p>
       </div>
     </div>
