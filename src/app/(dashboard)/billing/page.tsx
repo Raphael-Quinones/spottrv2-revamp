@@ -38,7 +38,7 @@ export default async function BillingPage() {
   const creditPackages = [
     { credits: 10000, price: 10, value: '~10 hours of video', productId: 'credits_10k' },
     { credits: 50000, price: 45, value: '~50 hours of video', productId: 'credits_50k' },
-    { credits: 100000, price: 85, value: '~100 hours of video', productId: 'credits_100k' },
+    { credits: 100000, price: 80, value: '~100 hours of video', productId: 'credits_100k' },
   ];
 
   return (
