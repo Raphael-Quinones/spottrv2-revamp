@@ -32,7 +32,7 @@ interface AutumnResponse<T = any> {
 // Checkout creates a Stripe checkout session for purchasing products
 export async function checkout(params: CheckoutParams): Promise<AutumnResponse> {
   try {
-    const response = await fetch('/api/autumn/attach', {
+    const response = await fetch('/api/autumn/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -44,10 +44,11 @@ export async function checkout(params: CheckoutParams): Promise<AutumnResponse> 
 
     const data = await response.json();
 
-    // Autumn returns 'url' for checkout sessions
-    if (data.url) {
+    // Handle both 'url' and 'checkout_url' fields
+    const checkoutUrl = data.url || data.checkout_url;
+    if (checkoutUrl) {
       // Redirect to Stripe checkout
-      window.location.href = data.url;
+      window.location.href = checkoutUrl;
       return { data };
     }
 
@@ -74,7 +75,14 @@ export async function attach(params: AttachParams): Promise<AutumnResponse> {
       }),
     });
 
-    return await response.json();
+    const data = await response.json();
+
+    // Handle both 'url' and 'checkout_url' fields for consistency
+    if (data.checkout_url && !data.url) {
+      data.url = data.checkout_url;
+    }
+
+    return data;
   } catch (error) {
     console.error('Attach error:', error);
     return {
@@ -157,17 +165,23 @@ export async function cancel(productId: string): Promise<AutumnResponse> {
 // Open billing portal for managing subscriptions
 export async function openBillingPortal(): Promise<AutumnResponse> {
   try {
-    const response = await fetch('/api/autumn/billing_portal', {
+    // Note: The actual Autumn API endpoint is /customers/{customer_id}/billing_portal
+    // Our proxy will handle adding the customer_id from the authenticated user
+    const response = await fetch('/api/autumn/customers/me/billing_portal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        return_url: window.location.href
+      }),
     });
 
     const data = await response.json();
 
-    if (data.portal_url) {
+    // Handle both 'url' and 'portal_url' fields
+    const portalUrl = data.url || data.portal_url;
+    if (portalUrl) {
       // Redirect to Stripe billing portal
-      window.location.href = data.portal_url;
+      window.location.href = portalUrl;
       return { data };
     }
 
